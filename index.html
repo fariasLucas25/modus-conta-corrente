@@ -711,48 +711,81 @@ async function parsePDF(file) {
 }
 
 function parsePDFText(text) {
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
-
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
   const saldos = [];
   const encargos = [];
 
-  // Padrões de data e valor BR
-  const dateRx = /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{2,4})/;
-  const valRx = /-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2}/g;
+  // Regex: data dd/mm/yy ou dd/mm/yyyy
+  const dateRx = /\b(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{2,4})\b/;
 
-  // Palavras-chave de encargos
-  const encKw = /encargo|juros|tarifa|iof|taxa|cheque\s+esp|excesso|limite\s+cred/i;
-  const saldoKw = /saldo/i;
-  const ignoraKw = /aplicação|poupança|ted|pix\s+enviado|compra|débito\s+auto/i;
+  // Encargos: IOF, encargos limite crédito, juros cheque especial
+  const encKw = /encargo|iof\s+s\/|juros\s+cheque|taxa\s+cheque/i;
+  // Saldos explícitos
+  const saldoKw = /saldo\s+em\s+|saldo\s+anterior|saldo\s+final/i;
+  // Movimentos a ignorar para extração de saldo
+  const ignoraKw = /poupan|baixa\s+auto|transf|ted\s+|pix\s+|pagto\s+elet|saque\s+|aplicac|compra\s+|debito\s+auto|boleto/i;
+
+  // Extrai valor numérico de string com sufixos BR (CR, DV, D, – -)
+  function extractVal(s) {
+    // Remove espaços internos
+    s = s.trim();
+    // Detectar sufixo devedor
+    const isDev = /DV$|D\s*$|\u2013$|-$/.test(s) || /–\s*$/.test(s);
+    const isCred = /CR$/.test(s.toUpperCase());
+    // Limpar: remover sufixos e sinais finais
+    const clean = s.replace(/\s*(CR|DV|D)\s*$/i,'').replace(/[\u2013\-]\s*$/,'').trim();
+    // Converter número BR
+    const num = parseFloat(clean.replace(/\./g,'').replace(',','.'));
+    if (isNaN(num)) return null;
+    if (isDev) return -Math.abs(num);
+    if (isCred) return Math.abs(num);
+    return num;
+  }
+
+  // Encontra todos os valores monetários na linha (com sufixos opcionais)
+  function findVals(line) {
+    const rx = /\d{1,3}(?:\.\d{3})*,\d{2}\s*(?:CR|DV|D(?!\w))?(?:\s*[\u2013\-](?!\d))?/gi;
+    return [...line.matchAll(rx)].map(m => extractVal(m[0])).filter(v => v !== null);
+  }
 
   for (const line of lines) {
     const dm = line.match(dateRx);
     if (!dm) continue;
 
-    let y = parseInt(dm[3]); if (y < 100) y += y < 50 ? 2000 : 1900;
+    let y = parseInt(dm[3]);
+    if (y < 100) y += y < 50 ? 2000 : 1900;
+    if (y < 2000 || y > 2035) continue;
     const data = new Date(y, parseInt(dm[2])-1, parseInt(dm[1]));
     if (isNaN(data.getTime())) continue;
 
-    const vals = [...(line.matchAll(valRx))].map(m => parseBRNumber(m[0]));
+    const vals = findVals(line);
     if (!vals.length) continue;
 
-    // Detectar se é linha de encargo
+    // ENCARGOS
     if (encKw.test(line)) {
-      // Valor do encargo é o primeiro valor positivo (débito = positivo como saída)
-      const v = vals.find(v => v > 0);
-      if (v) encargos.push({ data, valor: v, hist: line.substring(0,60) });
-    } else if (saldoKw.test(line) || (!ignoraKw.test(line))) {
-      // Último valor na linha é geralmente o saldo
-      const saldo = vals[vals.length-1];
-      if (Math.abs(saldo) > 0.01) {
-        // Verificar se já existe saldo para esta data
-        const existing = saldos.find(s => dtKey(s.data) === dtKey(data));
-        if (!existing) {
-          saldos.push({ data, saldo, hist: line.substring(0,40) });
-        } else {
-          // Atualizar com último valor (geralmente saldo final do dia)
-          existing.saldo = saldo;
-        }
+      const v = Math.abs(vals[0]);
+      if (v > 0) encargos.push({ data, valor: v, hist: line.substring(0,60) });
+      continue;
+    }
+
+    // SALDO EXPLÍCITO
+    if (saldoKw.test(line)) {
+      const v = vals[vals.length - 1];
+      if (v !== null) {
+        const ex = saldos.find(s => dtKey(s.data) === dtKey(data));
+        if (!ex) saldos.push({ data, saldo: v });
+        else ex.saldo = v;
+      }
+      continue;
+    }
+
+    // SALDO IMPLÍCITO: último valor da linha (não é movimento conhecido)
+    if (!ignoraKw.test(line)) {
+      const v = vals[vals.length - 1];
+      if (v !== null && Math.abs(v) > 0.01) {
+        const ex = saldos.find(s => dtKey(s.data) === dtKey(data));
+        if (!ex) saldos.push({ data, saldo: v });
+        else ex.saldo = v;
       }
     }
   }
@@ -841,7 +874,12 @@ IMPORTANTE:
 
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01'},
+    headers: {
+      'Content-Type':'application/json',
+      'x-api-key':state.apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-ipc':'true'
+    },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514', max_tokens: 4000,
       messages: [{role:'user', content: prompt}]
@@ -898,7 +936,12 @@ Seja técnico, objetivo e use terminologia jurídico-contábil adequada. Máximo
 
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01'},
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':state.apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-ipc':'true'
+    },
     body: JSON.stringify({
       model:'claude-sonnet-4-20250514', max_tokens:1000,
       messages:[{role:'user',content:prompt}]
@@ -1013,11 +1056,19 @@ async function handleFile(file) {
     let parsed;
     if (ext === 'pdf') {
       parsed = await parsePDF(file);
-      // Se PDF não extraiu dados suficientes e há API, tenta via Claude
-      if (parsed.saldos.length < 3 && state.apiKey) {
-        document.getElementById('fConf').textContent = '🤖 Extraindo via IA...';
-        parsed = await extrairViaAI(parsed.rawText || '');
-        parsed.fonte = 'ai';
+      // Se PDF não extraiu dados suficientes
+      if (parsed.saldos.length < 3) {
+        if (state.apiKey && state.apiKey.startsWith('sk-ant-')) {
+          document.getElementById('fConf').textContent = '🤖 Extraindo via IA...';
+          try {
+            parsed = await extrairViaAI(parsed.rawText || '');
+            parsed.fonte = 'ai';
+          } catch(aiErr) {
+            toast('Extração IA: ' + aiErr.message, 'err');
+          }
+        } else if (parsed.saldos.length === 0) {
+          toast('PDF não reconhecido. Configure a chave Claude para extração via IA, ou use um PDF nativo exportado do internet banking.', 'err');
+        }
       }
     } else {
       parsed = await parseExcel(file);
@@ -1397,7 +1448,13 @@ async function enviar() {
     if (state.apiKey?.startsWith('sk-ant-')) {
       const ctx = state.chatCtx ? `\n\nCASO EM CONTEXTO: ${state.chatCtx.cliente} | ${state.chatCtx.banco} | Diferença: R$ ${fmtM(state.chatCtx.diferenca)} | Período: ${state.chatCtx.periodo}` : '';
       const r = await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',headers:{'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01'},
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key':state.apiKey,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-ipc':'true'
+        },
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,
           system:`Você é assistente jurídico especializado em direito bancário brasileiro, análise pericial de conta corrente e cheque especial. Seja técnico e objetivo.${ctx}`,
           messages:state.chatHistory})
