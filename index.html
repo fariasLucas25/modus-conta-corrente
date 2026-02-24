@@ -686,28 +686,48 @@ async function parsePDF(file) {
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({data: buf}).promise;
 
+  // 1. Tentar extração de texto primeiro
   let fullText = '';
-  for (let i = 1; i <= pdf.numPages; i++) {
+  const pageImages = []; // base64 das páginas renderizadas
+
+  for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
     const page = await pdf.getPage(i);
+
+    // Texto
     const content = await page.getTextContent();
-    // Reconstruct with X position for better column detection
     const items = content.items.sort((a,b) => {
-      const ay = Math.round(a.transform[5] / 5) * 5;
-      const by = Math.round(b.transform[5] / 5) * 5;
-      if (ay !== by) return by - ay;
-      return a.transform[4] - b.transform[4];
+      const ay = Math.round(a.transform[5]/5)*5;
+      const by = Math.round(b.transform[5]/5)*5;
+      return ay !== by ? by - ay : a.transform[4] - b.transform[4];
     });
     let lastY = null;
     for (const item of items) {
-      const y = Math.round(item.transform[5] / 4) * 4;
+      const y = Math.round(item.transform[5]/4)*4;
       if (lastY !== null && y !== lastY) fullText += '\n';
       fullText += item.str + ' ';
       lastY = y;
     }
     fullText += '\n';
+
+    // Renderizar página como imagem (para fallback via Claude)
+    const viewport = page.getViewport({scale: 1.5});
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
+    pageImages.push(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
   }
 
-  return parsePDFText(fullText);
+  // 2. Verificar se o texto é legível (fonte não codificada)
+  const isReadable = /\d{2}\/\d{2}\/\d{2,4}/.test(fullText) || /SALDO|ENCARGO|JUROS/i.test(fullText);
+
+  if (isReadable) {
+    // Texto legível — parsear normalmente
+    return parsePDFText(fullText);
+  } else {
+    // Fonte codificada (ex: Bradesco) — retornar imagens para extração via Claude
+    return { saldos: [], encargos: [], rawText: fullText, pageImages, fonte: 'pdf_encoded' };
+  }
 }
 
 function parsePDFText(text) {
@@ -846,59 +866,96 @@ async function parseExcel(file) {
 }
 
 // ══════════════════════════════════════════════
-//  EXTRAÇÃO VIA CLAUDE API (PDF escaneado)
+//  EXTRAÇÃO VIA CLAUDE API (PDF com fonte codificada ou escaneado)
 // ══════════════════════════════════════════════
 
-async function extrairViaAI(rawText) {
-  if (!state.apiKey) throw new Error('Configure a chave Claude para extrair PDFs escaneados.');
+async function extrairViaAI(rawText, pageImages) {
+  if (!state.apiKey || !state.apiKey.startsWith('sk-ant-')) {
+    throw new Error('Configure a chave Claude para processar este tipo de PDF.');
+  }
 
-  const prompt = `Você é um sistema de extração de dados de extratos bancários brasileiros.
+  let messages;
 
-Analise o texto abaixo e extraia:
-1. SALDOS DIÁRIOS: data e saldo de cada dia (mesmo que seja repetição do dia anterior)
-2. ENCARGOS: data e valor de cada lançamento de encargos (cheque especial, excesso de limite, juros)
+  if (pageImages && pageImages.length > 0) {
+    // Enviar páginas como imagens — Claude lê visualmente
+    const content = [];
+    for (let i = 0; i < Math.min(pageImages.length, 5); i++) {
+      content.push({
+        type: 'image',
+        source: { type: 'base64', media_type: 'image/jpeg', data: pageImages[i] }
+      });
+    }
+    content.push({
+      type: 'text',
+      text: `Analise as imagens deste extrato bancário brasileiro e extraia os dados.
 
-TEXTO DO EXTRATO:
-${rawText.substring(0, 6000)}
-
-Responda APENAS em JSON válido, sem markdown:
+Responda APENAS em JSON válido (sem markdown, sem texto antes ou depois):
 {
   "saldos": [{"data": "DD/MM/YYYY", "saldo": -1234.56}],
-  "encargos": [{"data": "DD/MM/YYYY", "valor": 234.56, "historico": "ENCARGOS CHEQUE ESPECIAL"}]
+  "encargos": [{"data": "DD/MM/YYYY", "valor": 234.56, "historico": "ENCARGOS LIMITE CREDITO"}]
 }
 
-IMPORTANTE:
-- Saldos devedores são NEGATIVOS
-- Encargos são POSITIVOS (débito na conta)
-- Inclua TODOS os dias com saldo informado no extrato`;
+REGRAS IMPORTANTES:
+- Saldos devedores (DV, D-, negativos) = número NEGATIVO
+- Saldos credores (CR, positivos) = número POSITIVO
+- Encargos/IOF/Juros = valor POSITIVO (é um débito cobrado)
+- Extraia TODOS os registros de saldo e TODOS os encargos visíveis
+- Datas no formato DD/MM/YYYY (ano com 4 dígitos)`
+    });
+    messages = [{ role: 'user', content }];
+  } else {
+    // Fallback com texto
+    messages = [{
+      role: 'user',
+      content: `Analise o texto deste extrato bancário e extraia os dados estruturados.
+
+TEXTO:
+${rawText.substring(0, 6000)}
+
+Responda APENAS em JSON válido:
+{"saldos": [{"data": "DD/MM/YYYY", "saldo": -1234.56}], "encargos": [{"data": "DD/MM/YYYY", "valor": 234.56, "historico": "desc"}]}`
+    }];
+  }
 
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'Content-Type':'application/json',
-      'x-api-key':state.apiKey,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-ipc':'true'
+      'Content-Type': 'application/json',
+      'x-api-key': state.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-ipc': 'true'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514', max_tokens: 4000,
-      messages: [{role:'user', content: prompt}]
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages
     })
   });
-  if (!resp.ok) throw new Error('Erro API Claude: ' + resp.status);
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`API Claude ${resp.status}: ${err.substring(0,200)}`);
+  }
+
   const data = await resp.json();
   let txt = data.content[0].text.replace(/```json|```/g,'').trim();
-  const parsed = JSON.parse(txt);
+
+  // Extrair JSON mesmo que haja texto ao redor
+  const jsonMatch = txt.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Claude não retornou JSON válido.');
+  const parsed = JSON.parse(jsonMatch[0]);
 
   const saldos = (parsed.saldos||[]).map(s => ({
     data: parseDate(s.data), saldo: Number(s.saldo)
-  })).filter(s => s.data);
+  })).filter(s => s.data && !isNaN(s.saldo));
+
   const encargos = (parsed.encargos||[]).map(e => ({
-    data: parseDate(e.data), valor: Number(e.valor), hist: e.historico
-  })).filter(e => e.data);
+    data: parseDate(e.data), valor: Number(e.valor), hist: e.historico||''
+  })).filter(e => e.data && e.valor > 0);
 
   return { saldos, encargos, fonte: 'ai' };
 }
+
 
 // ══════════════════════════════════════════════
 //  PARECER JURÍDICO VIA CLAUDE
@@ -1055,19 +1112,23 @@ async function handleFile(file) {
     const ext = file.name.split('.').pop().toLowerCase();
     let parsed;
     if (ext === 'pdf') {
+      document.getElementById('fConf').textContent = '⏳ Lendo PDF...';
       parsed = await parsePDF(file);
-      // Se PDF não extraiu dados suficientes
-      if (parsed.saldos.length < 3) {
+
+      // Fonte codificada (ex: Bradesco) ou PDF escaneado — precisa da Claude API
+      if (parsed.saldos.length < 3 || parsed.fonte === 'pdf_encoded') {
         if (state.apiKey && state.apiKey.startsWith('sk-ant-')) {
-          document.getElementById('fConf').textContent = '🤖 Extraindo via IA...';
+          document.getElementById('fConf').textContent = '🤖 PDF com fonte codificada · Extraindo via Claude...';
           try {
-            parsed = await extrairViaAI(parsed.rawText || '');
+            parsed = await extrairViaAI(parsed.rawText || '', parsed.pageImages || []);
             parsed.fonte = 'ai';
           } catch(aiErr) {
-            toast('Extração IA: ' + aiErr.message, 'err');
+            toast('Erro na extração: ' + aiErr.message, 'err');
+            document.getElementById('fConf').textContent = '✗ Erro na extração';
           }
-        } else if (parsed.saldos.length === 0) {
-          toast('PDF não reconhecido. Configure a chave Claude para extração via IA, ou use um PDF nativo exportado do internet banking.', 'err');
+        } else {
+          toast('Este PDF usa fonte codificada (comum em Bradesco, Itaú). Configure a chave Claude no topo para extração automática.', 'err');
+          document.getElementById('fConf').textContent = '⚠️ Requer chave Claude';
         }
       }
     } else {
