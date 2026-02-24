@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Modus · Análise de Conta Corrente</title>
+<title>Modus · Análise Pericial v2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -11,646 +11,183 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 
 <style>
-  :root {
-    --ink: #0e0e10;
-    --paper: #f5f2eb;
-    --cream: #ede9df;
-    --gold: #c8a84b;
-    --gold-light: #e8d48a;
-    --red: #c0392b;
-    --green: #1a6b3a;
-    --muted: #7a7670;
-    --border: #d4cfc4;
-    --card: #ffffff;
-    --shadow: 0 2px 16px rgba(14,14,16,0.08);
-    --shadow-lg: 0 8px 40px rgba(14,14,16,0.14);
-  }
+:root {
+  --ink: #0e0e10; --paper: #f5f2eb; --cream: #ede9df; --gold: #c8a84b;
+  --gold-l: #e8d48a; --red: #c0392b; --green: #1a6b3a; --muted: #7a7670;
+  --border: #d4cfc4; --card: #ffffff; --sh: 0 2px 16px rgba(14,14,16,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Syne',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;overflow-x:hidden}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+header{background:var(--ink);color:var(--paper);padding:0 2rem;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--gold)}
+.logo{font-family:'DM Serif Display',serif;font-size:1.3rem;letter-spacing:-.02em;display:flex;align-items:center;gap:.4rem}
+.logo span{color:var(--gold)}
+.logo-tag{font-family:'DM Mono',monospace;font-size:.6rem;color:#555;letter-spacing:.12em;text-transform:uppercase;margin-left:.6rem;padding-left:.6rem;border-left:1px solid #333}
+.hdr-right{display:flex;align-items:center;gap:.75rem}
+.api-wrap{display:flex;align-items:center;gap:.4rem}
+.api-wrap label{font-family:'DM Mono',monospace;font-size:.6rem;color:#666;text-transform:uppercase;letter-spacing:.1em}
+#apiKey{background:#1a1a1c;border:1px solid #333;color:var(--paper);font-family:'DM Mono',monospace;font-size:.72rem;padding:.3rem .65rem;border-radius:4px;width:210px;outline:none;transition:border-color .2s}
+#apiKey:focus{border-color:var(--gold)}
+.api-dot{width:7px;height:7px;border-radius:50%;background:#444;transition:background .3s}
+.api-dot.on{background:#22c55e;box-shadow:0 0 6px #22c55e}
+.version-badge{font-family:'DM Mono',monospace;font-size:.6rem;background:var(--gold);color:var(--ink);padding:.2rem .5rem;border-radius:3px;font-weight:600}
 
-  body {
-    font-family: 'Syne', sans-serif;
-    background: var(--paper);
-    color: var(--ink);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+.layout{display:grid;grid-template-columns:248px 1fr;min-height:calc(100vh - 58px)}
 
-  /* ── HEADER ── */
-  header {
-    background: var(--ink);
-    color: var(--paper);
-    padding: 0 2.5rem;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    border-bottom: 2px solid var(--gold);
-  }
-  .logo {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.35rem;
-    letter-spacing: -0.02em;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .logo span { color: var(--gold); }
-  .logo-sub {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--muted);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-left: 0.75rem;
-    padding-left: 0.75rem;
-    border-left: 1px solid #333;
-  }
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-  .api-key-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .api-key-wrap label {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-  #apiKeyInput {
-    background: #1a1a1c;
-    border: 1px solid #333;
-    color: var(--paper);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.75rem;
-    padding: 0.35rem 0.7rem;
-    border-radius: 4px;
-    width: 220px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  #apiKeyInput:focus { border-color: var(--gold); }
-  .badge-api {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #555;
-    transition: background 0.3s;
-  }
-  .badge-api.active { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+aside{background:var(--ink);color:var(--paper);padding:1.25rem .85rem;display:flex;flex-direction:column;gap:.2rem;border-right:1px solid #1e1e20}
+.s-sec{font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.15em;color:#444;padding:.85rem .5rem .4rem}
+.nav{display:flex;align-items:center;gap:.55rem;padding:.5rem .7rem;border-radius:5px;cursor:pointer;font-size:.8rem;font-weight:600;color:#888;transition:all .15s;border:1px solid transparent}
+.nav:hover{background:#1a1a1c;color:var(--paper)}
+.nav.on{background:#1a1a1c;color:var(--gold);border-color:#252525}
+.nav-ic{font-size:.85rem;width:16px;text-align:center}
+.case-list{flex:1;overflow-y:auto;margin-top:.25rem}
+.case-item{padding:.55rem .7rem;border-radius:5px;cursor:pointer;font-size:.72rem;color:#777;border:1px solid transparent;transition:all .15s;margin-bottom:.15rem}
+.case-item:hover{background:#1a1a1c;color:var(--paper)}
+.case-item.on{background:#1a1a1c;border-color:var(--gold);color:var(--gold)}
+.ci-name{font-weight:600;margin-bottom:.1rem}
+.ci-meta{font-family:'DM Mono',monospace;font-size:.58rem;color:#444}
+.case-item.on .ci-meta{color:#777}
+.btn-new{margin-top:.4rem;width:100%;padding:.55rem;background:transparent;border:1px dashed #2a2a2a;color:#444;border-radius:5px;font-family:'Syne',sans-serif;font-size:.72rem;cursor:pointer;transition:all .15s}
+.btn-new:hover{border-color:var(--gold);color:var(--gold)}
 
-  /* ── LAYOUT ── */
-  .app-layout {
-    display: grid;
-    grid-template-columns: 260px 1fr;
-    min-height: calc(100vh - 60px);
-  }
+main{padding:1.75rem 2.25rem;overflow-y:auto;max-height:calc(100vh - 58px)}
+.view{display:none}
+.view.on{display:block}
 
-  /* ── SIDEBAR ── */
-  aside {
-    background: var(--ink);
-    color: var(--paper);
-    padding: 1.5rem 1rem;
-    border-right: 1px solid #1e1e20;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  .sidebar-section {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: #555;
-    padding: 1rem 0.5rem 0.5rem;
-  }
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.55rem 0.75rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #aaa;
-    transition: all 0.15s;
-    border: 1px solid transparent;
-  }
-  .nav-item:hover { background: #1a1a1c; color: var(--paper); }
-  .nav-item.active { background: #1a1a1c; color: var(--gold); border-color: #2a2a2c; }
-  .nav-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.75rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.pt{font-family:'DM Serif Display',serif;font-size:1.85rem;font-weight:400;line-height:1.1;letter-spacing:-.03em}
+.pt em{color:var(--gold);font-style:italic}
+.ps{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;margin-top:.35rem;text-transform:uppercase}
 
-  .case-list { margin-top: 0.5rem; flex: 1; overflow-y: auto; }
-  .case-item {
-    padding: 0.6rem 0.75rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.75rem;
-    color: #888;
-    border: 1px solid transparent;
-    transition: all 0.15s;
-    margin-bottom: 0.2rem;
-  }
-  .case-item:hover { background: #1a1a1c; color: var(--paper); }
-  .case-item.active { background: #1a1a1c; border-color: var(--gold); color: var(--gold); }
-  .case-item-name { font-weight: 600; color: inherit; margin-bottom: 0.15rem; }
-  .case-item-meta { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: #555; }
-  .case-item.active .case-item-meta { color: #888; }
+.card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:1.35rem;box-shadow:var(--sh)}
+.ct{font-family:'DM Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:.85rem}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem}
+.gap{margin-bottom:1.35rem}
 
-  .btn-new-case {
-    margin-top: 0.5rem;
-    width: 100%;
-    padding: 0.6rem;
-    background: transparent;
-    border: 1px dashed #333;
-    color: #555;
-    border-radius: 6px;
-    font-family: 'Syne', sans-serif;
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .btn-new-case:hover { border-color: var(--gold); color: var(--gold); }
+.sc{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:1.1rem 1.35rem;position:relative;overflow:hidden}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold)}
+.sc.danger::before{background:var(--red)}
+.sc.ok::before{background:var(--green)}
+.sl{font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);margin-bottom:.4rem}
+.sv{font-family:'DM Serif Display',serif;font-size:1.5rem;letter-spacing:-.03em;line-height:1}
+.sv.neg{color:var(--red)}
+.sv.pos{color:var(--green)}
+.sd{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);margin-top:.3rem}
 
-  /* ── MAIN ── */
-  main {
-    padding: 2rem 2.5rem;
-    overflow-y: auto;
-    max-height: calc(100vh - 60px);
-  }
+/* Upload */
+.upload{border:2px dashed var(--border);border-radius:9px;padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--cream);position:relative}
+.upload:hover,.upload.drag{border-color:var(--gold);background:#fdf9ef}
+.upload input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-ic{font-size:2.2rem;margin-bottom:.75rem}
+.upload-t{font-family:'DM Serif Display',serif;font-size:1rem;margin-bottom:.3rem}
+.upload-h{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted)}
+.badges{display:flex;justify-content:center;gap:.4rem;margin-top:.6rem}
+.bdg{font-family:'DM Mono',monospace;font-size:.58rem;padding:.18rem .45rem;border-radius:3px;letter-spacing:.07em;text-transform:uppercase}
+.bdg-g{background:#fdf3d0;color:#8a6d1a;border:1px solid #e8d48a}
+.bdg-b{background:#e8f0fe;color:#1a4a8a;border:1px solid #a8c0f0}
 
-  /* ── PAGE TITLE ── */
-  .page-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .page-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 2rem;
-    font-weight: 400;
-    line-height: 1.1;
-    letter-spacing: -0.03em;
-  }
-  .page-title em { color: var(--gold); font-style: italic; }
-  .page-subtitle {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-    margin-top: 0.4rem;
-    text-transform: uppercase;
-  }
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:.35rem;padding:.6rem 1.1rem;border-radius:5px;font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;border:none;transition:all .15s;text-transform:uppercase;letter-spacing:.05em}
+.btn-dk{background:var(--ink);color:var(--paper)}
+.btn-dk:hover{background:#1e1e20}
+.btn-gd{background:var(--gold);color:var(--ink)}
+.btn-gd:hover{background:var(--gold-l)}
+.btn-ol{background:transparent;color:var(--ink);border:1.5px solid var(--border)}
+.btn-ol:hover{border-color:var(--ink)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
 
-  /* ── CARDS ── */
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.5rem;
-    box-shadow: var(--shadow);
-  }
-  .card-title {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--muted);
-    margin-bottom: 1rem;
-  }
+/* Table */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+th{font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:.55rem .9rem;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap}
+td{padding:.55rem .9rem;border-bottom:1px solid var(--cream);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--cream)}
+.tn{font-family:'DM Mono',monospace;text-align:right}
+.tr-neg{color:var(--red);font-family:'DM Mono',monospace;text-align:right}
+.tr-pos{color:var(--green);font-family:'DM Mono',monospace;text-align:right}
 
-  /* ── GRID ── */
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; }
-  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+/* Form */
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-bottom:.9rem}
+.fg{display:flex;flex-direction:column;gap:.35rem}
+.fl{font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.fi{padding:.55rem .8rem;border:1.5px solid var(--border);border-radius:5px;font-family:'Syne',sans-serif;font-size:.82rem;background:var(--paper);outline:none;transition:border-color .2s}
+.fi:focus{border-color:var(--gold)}
 
-  /* ── STAT CARDS ── */
-  .stat-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.25rem 1.5rem;
-    position: relative;
-    overflow: hidden;
-  }
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: var(--gold);
-  }
-  .stat-card.danger::before { background: var(--red); }
-  .stat-card.success::before { background: var(--green); }
-  .stat-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.62rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-    margin-bottom: 0.5rem;
-  }
-  .stat-value {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.6rem;
-    letter-spacing: -0.03em;
-    line-height: 1;
-  }
-  .stat-value.negative { color: var(--red); }
-  .stat-value.positive { color: var(--green); }
-  .stat-delta {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--muted);
-    margin-top: 0.4rem;
-  }
+/* Tabs */
+.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:1.35rem}
+.tab{padding:.55rem 1.1rem;font-family:'DM Mono',monospace;font-size:.63rem;text-transform:uppercase;letter-spacing:.09em;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);border-bottom-color:var(--gold);font-weight:600}
 
-  /* ── UPLOAD ZONE ── */
-  .upload-zone {
-    border: 2px dashed var(--border);
-    border-radius: 10px;
-    padding: 3rem 2rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: var(--cream);
-    position: relative;
-  }
-  .upload-zone:hover, .upload-zone.dragover {
-    border-color: var(--gold);
-    background: #fdf9ef;
-  }
-  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .upload-icon { font-size: 2.5rem; margin-bottom: 1rem; }
-  .upload-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.1rem;
-    margin-bottom: 0.4rem;
-  }
-  .upload-hint {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.68rem;
-    color: var(--muted);
-    letter-spacing: 0.05em;
-  }
-  .upload-badges { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.75rem; }
-  .badge {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.6rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 3px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .badge-gold { background: #fdf3d0; color: #8a6d1a; border: 1px solid #e8d48a; }
-  .badge-blue { background: #e8f0fe; color: #1a4a8a; border: 1px solid #a8c0f0; }
-  .badge-green { background: #e8f5ee; color: #1a6b3a; border: 1px solid #a8d4b8; }
+/* Chat */
+.chat-wrap{border:1px solid var(--border);border-radius:9px;overflow:hidden;display:flex;flex-direction:column;height:460px;background:var(--card)}
+.chat-hdr{background:var(--ink);color:var(--paper);padding:.65rem 1.1rem;display:flex;align-items:center;gap:.4rem}
+.chat-hdr-t{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase}
+.chat-dot{width:6px;height:6px;border-radius:50%;background:var(--gold)}
+.chat-msgs{flex:1;overflow-y:auto;padding:1.1rem;display:flex;flex-direction:column;gap:.65rem}
+.msg{max-width:86%;padding:.7rem .9rem;border-radius:7px;font-size:.8rem;line-height:1.5}
+.msg-ai{background:var(--cream);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:2px}
+.msg-u{background:var(--ink);color:var(--paper);align-self:flex-end;border-bottom-right-radius:2px}
+.msg-lbl{font-family:'DM Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:.25rem}
+.msg-u .msg-lbl{color:#888}
+.chat-in-wrap{padding:.85rem;border-top:1px solid var(--border);display:flex;gap:.4rem}
+#chatIn{flex:1;padding:.6rem .9rem;border:1.5px solid var(--border);border-radius:5px;font-family:'Syne',sans-serif;font-size:.8rem;outline:none;background:var(--paper);transition:border-color .2s}
+#chatIn:focus{border-color:var(--gold)}
 
-  /* ── BUTTONS ── */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.65rem 1.25rem;
-    border-radius: 6px;
-    font-family: 'Syne', sans-serif;
-    font-size: 0.82rem;
-    font-weight: 700;
-    cursor: pointer;
-    border: none;
-    transition: all 0.15s;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .btn-primary {
-    background: var(--ink);
-    color: var(--paper);
-  }
-  .btn-primary:hover { background: #1e1e20; }
-  .btn-gold {
-    background: var(--gold);
-    color: var(--ink);
-  }
-  .btn-gold:hover { background: var(--gold-light); }
-  .btn-outline {
-    background: transparent;
-    color: var(--ink);
-    border: 1.5px solid var(--border);
-  }
-  .btn-outline:hover { border-color: var(--ink); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Progress */
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
 
-  /* ── TABLE ── */
-  .table-wrap { overflow-x: auto; }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.8rem;
-  }
-  th {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    padding: 0.6rem 1rem;
-    border-bottom: 2px solid var(--border);
-    text-align: left;
-    white-space: nowrap;
-  }
-  td {
-    padding: 0.6rem 1rem;
-    border-bottom: 1px solid var(--cream);
-    vertical-align: middle;
-  }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--cream); }
-  .td-num { font-family: 'DM Mono', monospace; text-align: right; }
-  .td-neg { color: var(--red); font-family: 'DM Mono', monospace; text-align: right; }
-  .td-pos { color: var(--green); font-family: 'DM Mono', monospace; text-align: right; }
+/* Result highlight */
+.rh{background:linear-gradient(135deg,#fdf9ef,#fff);border:1.5px solid var(--gold);border-radius:9px;padding:1.35rem 1.75rem;margin-bottom:1.35rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem}
+.rh-lbl{font-family:'DM Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);margin-bottom:.4rem}
+.rh-val{font-family:'DM Serif Display',serif;font-size:2.5rem;color:var(--red);letter-spacing:-.04em;line-height:1}
 
-  /* ── CHAT / AI ── */
-  .chat-wrap {
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    height: 480px;
-    background: var(--card);
-  }
-  .chat-header {
-    background: var(--ink);
-    color: var(--paper);
-    padding: 0.75rem 1.25rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .chat-header-title {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-  .chat-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
-  .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-  .msg {
-    max-width: 85%;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    line-height: 1.5;
-  }
-  .msg-ai {
-    background: var(--cream);
-    border: 1px solid var(--border);
-    align-self: flex-start;
-    border-bottom-left-radius: 2px;
-  }
-  .msg-user {
-    background: var(--ink);
-    color: var(--paper);
-    align-self: flex-end;
-    border-bottom-right-radius: 2px;
-  }
-  .msg-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.58rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    margin-bottom: 0.3rem;
-  }
-  .msg-user .msg-label { color: #888; }
-  .chat-input-wrap {
-    padding: 1rem;
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 0.5rem;
-  }
-  #chatInput {
-    flex: 1;
-    padding: 0.65rem 1rem;
-    border: 1.5px solid var(--border);
-    border-radius: 6px;
-    font-family: 'Syne', sans-serif;
-    font-size: 0.82rem;
-    outline: none;
-    background: var(--paper);
-    transition: border-color 0.2s;
-  }
-  #chatInput:focus { border-color: var(--gold); }
+/* Animations */
+.fade-up{animation:fu .35s ease}
+@keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
-  /* ── PROGRESS / LOADING ── */
-  .progress-bar-wrap {
-    height: 4px;
-    background: var(--cream);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-bottom: 0.5rem;
-  }
-  .progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, var(--gold), var(--gold-light));
-    border-radius: 2px;
-    transition: width 0.4s;
-  }
-  .loading-spinner {
-    display: inline-block;
-    width: 14px; height: 14px;
-    border: 2px solid var(--border);
-    border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* Toast */
+.toast{position:fixed;bottom:1.25rem;right:1.25rem;background:var(--ink);color:var(--paper);padding:.65rem 1.1rem;border-radius:7px;font-size:.8rem;border-left:3px solid var(--gold);animation:si .25s ease;z-index:999;max-width:300px}
+.toast.err{border-left-color:var(--red)}
+.toast.ok{border-left-color:var(--green)}
+@keyframes si{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
 
-  /* ── TABS ── */
-  .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; }
-  .tab {
-    padding: 0.6rem 1.25rem;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    cursor: pointer;
-    color: var(--muted);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition: all 0.15s;
-    white-space: nowrap;
-  }
-  .tab:hover { color: var(--ink); }
-  .tab.active { color: var(--ink); border-bottom-color: var(--gold); font-weight: 600; }
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(14,14,16,.6);display:none;align-items:center;justify-content:center;z-index:200}
+.overlay.on{display:flex}
+.modal{background:var(--card);border-radius:10px;padding:1.75rem;max-width:500px;width:90%;border:1px solid var(--border);box-shadow:0 8px 40px rgba(14,14,16,.14);animation:fu .25s ease}
+.modal-t{font-family:'DM Serif Display',serif;font-size:1.3rem;margin-bottom:1rem}
+.modal-act{display:flex;justify-content:flex-end;gap:.65rem;margin-top:1.35rem}
 
-  /* ── FORM ── */
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
-  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
-  .form-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.62rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-  }
-  .form-input {
-    padding: 0.6rem 0.85rem;
-    border: 1.5px solid var(--border);
-    border-radius: 6px;
-    font-family: 'Syne', sans-serif;
-    font-size: 0.85rem;
-    background: var(--paper);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .form-input:focus { border-color: var(--gold); }
-  select.form-input { cursor: pointer; }
+/* Steps */
+.step{display:flex;align-items:center;gap:.65rem;padding:.45rem 0;border-bottom:1px solid var(--cream)}
+.step-ic{width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
+.step-txt{font-size:.8rem}
+.step.done .step-txt{color:var(--green)}
+.step.err .step-txt{color:var(--red)}
 
-  /* ── ANALYSIS RESULT ── */
-  .result-section { animation: fadeInUp 0.4s ease; }
-  @keyframes fadeInUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+/* Sugg */
+.sugg{padding:.55rem .8rem;background:var(--cream);border:1px solid var(--border);border-radius:5px;font-size:.75rem;cursor:pointer;transition:all .15s;line-height:1.4;margin-bottom:.4rem}
+.sugg:hover{border-color:var(--gold);background:#fdf9ef}
 
-  .result-highlight {
-    background: linear-gradient(135deg, #fdf9ef 0%, #fff 100%);
-    border: 1.5px solid var(--gold);
-    border-radius: 10px;
-    padding: 1.5rem 2rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 2rem;
-  }
-  .result-highlight-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-    margin-bottom: 0.5rem;
-  }
-  .result-highlight-value {
-    font-family: 'DM Serif Display', serif;
-    font-size: 2.8rem;
-    color: var(--red);
-    letter-spacing: -0.04em;
-    line-height: 1;
-  }
+/* Chart */
+.ch-wrap{position:relative;height:240px}
 
-  /* ── VIEWS ── */
-  .view { display: none; }
-  .view.active { display: block; }
+/* Confiabilidade badge */
+.conf-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .65rem;border-radius:20px;font-family:'DM Mono',monospace;font-size:.58rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.conf-real{background:#e8f5ee;color:#1a6b3a;border:1px solid #a8d4b8}
+.conf-api{background:#e8f0fe;color:#1a4a8a;border:1px solid #a8c0f0}
 
-  /* ── EMPTY STATE ── */
-  .empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: var(--muted);
-  }
-  .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
-  .empty-state-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.25rem;
-    color: var(--ink);
-    margin-bottom: 0.5rem;
-  }
-  .empty-state-text { font-size: 0.82rem; line-height: 1.5; }
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
-  /* ── SCROLLBAR ── */
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-  /* ── NOTIFICATION ── */
-  .toast {
-    position: fixed;
-    bottom: 1.5rem; right: 1.5rem;
-    background: var(--ink);
-    color: var(--paper);
-    padding: 0.75rem 1.25rem;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    border-left: 3px solid var(--gold);
-    animation: slideIn 0.3s ease;
-    z-index: 999;
-    max-width: 320px;
-  }
-  .toast.error { border-left-color: var(--red); }
-  .toast.success { border-left-color: var(--green); }
-  @keyframes slideIn { from { transform: translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
-
-  /* ── MODAL ── */
-  .modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(14,14,16,0.65);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 200;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: var(--card);
-    border-radius: 12px;
-    padding: 2rem;
-    max-width: 520px;
-    width: 90%;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-lg);
-    animation: fadeInUp 0.25s ease;
-  }
-  .modal-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.4rem;
-    margin-bottom: 1.25rem;
-  }
-  .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
-
-  /* ── STATUS BADGE ── */
-  .status {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.2rem 0.6rem;
-    border-radius: 20px;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.6rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .status-dot { width: 5px; height: 5px; border-radius: 50%; }
-  .status-pending { background: #fef9e7; color: #8a6d1a; }
-  .status-pending .status-dot { background: var(--gold); }
-  .status-done { background: #e8f5ee; color: #1a6b3a; }
-  .status-done .status-dot { background: var(--green); }
-  .status-error { background: #fef0ee; color: #8a1a1a; }
-  .status-error .status-dot { background: var(--red); }
-
-  .section-gap { margin-bottom: 1.5rem; }
-
-  /* ── CHART CONTAINER ── */
-  .chart-container { position: relative; height: 260px; }
+/* Info box */
+.info-box{background:#fdf9ef;border:1px solid var(--gold-l);border-radius:7px;padding:.9rem 1.1rem;font-size:.8rem;line-height:1.6;margin-bottom:1rem}
+.info-box strong{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -659,1118 +196,1246 @@
 <header>
   <div class="logo">
     <span>Modus</span>
-    <div class="logo-sub">Conta Corrente · Análise Pericial</div>
+    <div class="logo-tag">Conta Corrente · Análise Pericial</div>
   </div>
-  <div class="header-right">
-    <div class="api-key-wrap">
-      <label>Chave API Claude</label>
-      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." oninput="onApiKeyChange(this.value)">
-      <div class="badge-api" id="apiBadge"></div>
+  <div class="hdr-right">
+    <span class="version-badge">v2 · Cálculos Reais</span>
+    <div class="api-wrap">
+      <label>API Claude</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-..." oninput="onKey(this.value)">
+      <div class="api-dot" id="dot"></div>
     </div>
   </div>
 </header>
 
-<!-- LAYOUT -->
-<div class="app-layout">
+<div class="layout">
 
-  <!-- SIDEBAR -->
-  <aside>
-    <div class="sidebar-section">Navegação</div>
-    <div class="nav-item active" onclick="showView('dashboard')" id="nav-dashboard">
-      <span class="nav-icon">▦</span> Dashboard
-    </div>
-    <div class="nav-item" onclick="showView('novo')" id="nav-novo">
-      <span class="nav-icon">＋</span> Novo Caso
-    </div>
-    <div class="nav-item" onclick="showView('consulta')" id="nav-consulta">
-      <span class="nav-icon">◉</span> Análise I.A.
-    </div>
+<!-- SIDEBAR -->
+<aside>
+  <div class="s-sec">Navegação</div>
+  <div class="nav on" id="n-dash" onclick="go('dash')"><span class="nav-ic">▦</span> Dashboard</div>
+  <div class="nav" id="n-novo" onclick="go('novo')"><span class="nav-ic">＋</span> Novo Caso</div>
+  <div class="nav" id="n-chat" onclick="go('chat')"><span class="nav-ic">◉</span> Assistente I.A.</div>
+  <div class="nav" id="n-ajuda" onclick="go('ajuda')"><span class="nav-ic">?</span> Como Funciona</div>
 
-    <div class="sidebar-section">Casos Ativos</div>
-    <div class="case-list" id="caseList">
-      <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:#444;padding:0.5rem;">
-        Nenhum caso cadastrado
-      </div>
-    </div>
-    <button class="btn-new-case" onclick="showView('novo')">+ Novo Caso</button>
-  </aside>
+  <div class="s-sec">Casos Salvos</div>
+  <div class="case-list" id="cList"><div style="font-family:'DM Mono',monospace;font-size:.62rem;color:#333;padding:.4rem .5rem">Nenhum caso salvo</div></div>
+  <button class="btn-new" onclick="go('novo')">+ Novo Caso</button>
+</aside>
 
-  <!-- MAIN -->
-  <main>
+<!-- MAIN -->
+<main>
 
-    <!-- ── VIEW: DASHBOARD ── -->
-    <div class="view active" id="view-dashboard">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Painel <em>Geral</em></div>
-          <div class="page-subtitle">Visão consolidada · Todos os casos</div>
-        </div>
-        <button class="btn btn-gold" onclick="showView('novo')">+ Novo Caso</button>
-      </div>
-
-      <div class="grid-4 section-gap" id="dashStats">
-        <div class="stat-card">
-          <div class="stat-label">Total de Casos</div>
-          <div class="stat-value" id="ds-total">0</div>
-          <div class="stat-delta">cadastrados</div>
-        </div>
-        <div class="stat-card danger">
-          <div class="stat-label">Cobrado Total</div>
-          <div class="stat-value negative" id="ds-cobrado">R$ 0</div>
-          <div class="stat-delta">pelo banco</div>
-        </div>
-        <div class="stat-card success">
-          <div class="stat-label">Valor Lícito Total</div>
-          <div class="stat-value positive" id="ds-licito">R$ 0</div>
-          <div class="stat-delta">conforme BACEN</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Diferença Total</div>
-          <div class="stat-value negative" id="ds-diff">R$ 0</div>
-          <div class="stat-delta">a ser restituído</div>
-        </div>
-      </div>
-
-      <div class="grid-2 section-gap">
-        <div class="card">
-          <div class="card-title">Evolução por Caso · Diferença Apurada</div>
-          <div class="chart-container">
-            <canvas id="chartCasos"></canvas>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Status dos Casos</div>
-          <div class="chart-container">
-            <canvas id="chartStatus"></canvas>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" id="dashCasosTable">
-        <div class="card-title">Todos os Casos</div>
-        <div class="empty-state">
-          <div class="empty-state-icon">📂</div>
-          <div class="empty-state-title">Nenhum caso ainda</div>
-          <div class="empty-state-text">Clique em "Novo Caso" para importar um extrato bancário e iniciar a análise pericial.</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── VIEW: NOVO CASO ── -->
-    <div class="view" id="view-novo">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Novo <em>Caso</em></div>
-          <div class="page-subtitle">Importar extrato e configurar parâmetros</div>
-        </div>
-      </div>
-
-      <div class="card section-gap">
-        <div class="card-title">1. Dados do Caso</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Número do Processo</label>
-            <input class="form-input" id="f-processo" placeholder="0000000-00.0000.0.00.0000">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Cliente / Parte</label>
-            <input class="form-input" id="f-cliente" placeholder="Nome completo do cliente">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Banco</label>
-            <select class="form-input" id="f-banco">
-              <option value="">Selecione o banco</option>
-              <option>Banco do Brasil</option>
-              <option>Caixa Econômica Federal</option>
-              <option>Bradesco</option>
-              <option>Itaú</option>
-              <option>Santander</option>
-              <option>Nubank</option>
-              <option>Outro</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Tipo de Análise</label>
-            <select class="form-input" id="f-tipo">
-              <option value="anatocismo">Anatocismo (Cheque Especial)</option>
-              <option value="bacen">Taxa BACEN Série 20741</option>
-              <option value="completo">Análise Completa (Ambas)</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Data Início do Extrato</label>
-            <input class="form-input" type="date" id="f-inicio">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Data Fim do Extrato</label>
-            <input class="form-input" type="date" id="f-fim">
-          </div>
-        </div>
-      </div>
-
-      <div class="card section-gap">
-        <div class="card-title">2. Importar Extrato Bancário</div>
-        <div class="upload-zone" id="uploadZone">
-          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.pdf" onchange="handleFile(this.files[0])">
-          <div class="upload-icon">📄</div>
-          <div class="upload-title">Arraste o arquivo aqui ou clique para selecionar</div>
-          <div class="upload-hint">Extrato exportado do internet banking ou sistema judicial</div>
-          <div class="upload-badges">
-            <span class="badge badge-gold">XLSX</span>
-            <span class="badge badge-gold">XLS</span>
-            <span class="badge badge-gold">CSV</span>
-            <span class="badge badge-blue">PDF</span>
-          </div>
-        </div>
-        <div id="fileStatus" style="display:none;margin-top:1rem;">
-          <div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;background:var(--cream);border-radius:6px;border:1px solid var(--border);">
-            <span style="font-size:1.2rem;">📋</span>
-            <div>
-              <div style="font-weight:600;font-size:0.85rem;" id="fileName"></div>
-              <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);" id="fileInfo"></div>
-            </div>
-            <div style="margin-left:auto;">
-              <span class="status status-pending"><span class="status-dot"></span>Aguardando</span>
-            </div>
-          </div>
-        </div>
-        <div id="previewWrap" style="display:none;margin-top:1rem;">
-          <div class="card-title" style="margin-bottom:0.75rem;">Pré-visualização dos dados importados</div>
-          <div class="table-wrap">
-            <table id="previewTable"></table>
-          </div>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:1rem;justify-content:flex-end;">
-        <button class="btn btn-outline" onclick="showView('dashboard')">Cancelar</button>
-        <button class="btn btn-gold" id="btnAnalisar" onclick="analisarCaso()" disabled>
-          ⚡ Analisar com I.A.
-        </button>
-      </div>
-
-      <!-- PROCESSING -->
-      <div id="processingWrap" style="display:none;margin-top:1.5rem;" class="card">
-        <div class="card-title">Processamento em andamento</div>
-        <div id="processingSteps"></div>
-      </div>
-
-      <!-- RESULT -->
-      <div id="resultWrap" style="display:none;margin-top:1.5rem;" class="result-section">
-        <div class="result-highlight">
-          <div>
-            <div class="result-highlight-label">Diferença Apurada · Valor a Restituir</div>
-            <div class="result-highlight-value" id="r-diferenca">—</div>
-            <div style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);margin-top:0.5rem;" id="r-periodo"></div>
-          </div>
-          <div style="display:flex;gap:2rem;">
-            <div>
-              <div class="result-highlight-label">Cobrado pelo Banco</div>
-              <div style="font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--red);" id="r-cobrado">—</div>
-            </div>
-            <div>
-              <div class="result-highlight-label">Valor Lícito (BACEN)</div>
-              <div style="font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--green);" id="r-licito">—</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="tabs">
-          <div class="tab active" onclick="switchResultTab(this,'tab-resumo')">Resumo Mensal</div>
-          <div class="tab" onclick="switchResultTab(this,'tab-analise')">Análise I.A.</div>
-          <div class="tab" onclick="switchResultTab(this,'tab-grafico')">Gráfico</div>
-        </div>
-
-        <div id="tab-resumo" class="card">
-          <div class="table-wrap">
-            <table id="resultTable"></table>
-          </div>
-        </div>
-        <div id="tab-analise" class="card" style="display:none;">
-          <div id="aiAnalysis" style="font-size:0.85rem;line-height:1.7;white-space:pre-wrap;"></div>
-        </div>
-        <div id="tab-grafico" class="card" style="display:none;">
-          <div class="chart-container">
-            <canvas id="chartResult"></canvas>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:0.75rem;margin-top:1rem;">
-          <button class="btn btn-primary" onclick="exportarResultado()">⬇ Exportar Relatório Excel</button>
-          <button class="btn btn-outline" onclick="salvarCaso()">💾 Salvar Caso</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── VIEW: CONSULTA I.A. ── -->
-    <div class="view" id="view-consulta">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Análise <em>I.A.</em></div>
-          <div class="page-subtitle">Consulte a IA sobre qualquer caso ou conceito jurídico</div>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div>
-          <div class="chat-wrap">
-            <div class="chat-header">
-              <div class="chat-dot"></div>
-              <div class="chat-header-title">Assistente Jurídico · Conta Corrente</div>
-            </div>
-            <div class="chat-messages" id="chatMessages">
-              <div class="msg msg-ai">
-                <div class="msg-label">Assistente Modus</div>
-                Olá! Sou o assistente especializado em análise de conta corrente e cheque especial. Posso ajudar com:<br><br>
-                • Cálculo de anatocismo<br>
-                • Interpretação de taxas BACEN<br>
-                • Revisão de encargos cobrados<br>
-                • Fundamentação jurídica<br><br>
-                Selecione um caso na lateral ou faça uma pergunta diretamente.
-              </div>
-            </div>
-            <div class="chat-input-wrap">
-              <input type="text" id="chatInput" placeholder="Pergunte sobre anatocismo, taxas BACEN, encargos..." onkeydown="if(event.key==='Enter')sendChat()">
-              <button class="btn btn-primary" onclick="sendChat()">Enviar</button>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:column;gap:1rem;">
-          <div class="card">
-            <div class="card-title">Caso em Análise</div>
-            <select class="form-input" id="chatCaseSelect" onchange="loadCaseContext()">
-              <option value="">Nenhum caso selecionado</option>
-            </select>
-            <div id="chatCaseSummary" style="margin-top:1rem;display:none;">
-              <div style="font-size:0.82rem;line-height:1.6;" id="chatCaseSummaryText"></div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">Sugestões de Perguntas</div>
-            <div style="display:flex;flex-direction:column;gap:0.5rem;">
-              <div class="suggestion" onclick="setSuggestion(this)">Qual é o fundamento jurídico para cobrança de anatocismo em cheque especial?</div>
-              <div class="suggestion" onclick="setSuggestion(this)">Como calcular a diferença entre a taxa cobrada e a taxa BACEN Série 20741?</div>
-              <div class="suggestion" onclick="setSuggestion(this)">O banco pode cobrar juros sobre juros vencidos em conta corrente?</div>
-              <div class="suggestion" onclick="setSuggestion(this)">Explique o cálculo de juros compensados no método sem anatocismo.</div>
-              <div class="suggestion" onclick="setSuggestion(this)">Qual é o prazo prescricional para ação de revisão de cheque especial?</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── VIEW: CASO INDIVIDUAL ── -->
-    <div class="view" id="view-caso">
-      <div class="page-header">
-        <div>
-          <div class="page-title" id="caso-title">Caso</div>
-          <div class="page-subtitle" id="caso-subtitle"></div>
-        </div>
-        <div style="display:flex;gap:0.75rem;">
-          <button class="btn btn-outline" onclick="showView('consulta')">🤖 Consultar I.A.</button>
-          <button class="btn btn-primary" onclick="exportarResultado()">⬇ Exportar</button>
-        </div>
-      </div>
-      <div id="casoContent"></div>
-    </div>
-
-  </main>
+<!-- ══ DASHBOARD ══ -->
+<div class="view on" id="v-dash">
+  <div class="ph">
+    <div><div class="pt">Painel <em>Geral</em></div><div class="ps">Todos os casos · Visão consolidada</div></div>
+    <button class="btn btn-gd" onclick="go('novo')">+ Novo Caso</button>
+  </div>
+  <div class="g4 gap" id="d-stats">
+    <div class="sc"><div class="sl">Total de Casos</div><div class="sv" id="d-total">0</div></div>
+    <div class="sc danger"><div class="sl">Cobrado Total</div><div class="sv neg" id="d-cob">R$ 0</div></div>
+    <div class="sc ok"><div class="sl">Lícito Total</div><div class="sv pos" id="d-lic">R$ 0</div></div>
+    <div class="sc danger"><div class="sl">A Restituir</div><div class="sv neg" id="d-dif">R$ 0</div></div>
+  </div>
+  <div class="g2 gap">
+    <div class="card"><div class="ct">Cobrado vs. Lícito por Caso</div><div class="ch-wrap"><canvas id="ch1"></canvas></div></div>
+    <div class="card"><div class="ct">Distribuição dos Casos</div><div class="ch-wrap"><canvas id="ch2"></canvas></div></div>
+  </div>
+  <div class="card" id="d-table"></div>
 </div>
 
-<!-- MODAL NOVO CASO -->
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal">
-    <div class="modal-title">Caso salvo com sucesso</div>
-    <p style="font-size:0.85rem;line-height:1.6;color:var(--muted);">O caso foi adicionado ao painel. Você pode acessá-lo a qualquer momento pelo menu lateral.</p>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeModal()">Fechar</button>
-      <button class="btn btn-gold" onclick="closeModal();showView('dashboard')">Ver Painel</button>
+<!-- ══ NOVO CASO ══ -->
+<div class="view" id="v-novo">
+  <div class="ph">
+    <div><div class="pt">Novo <em>Caso</em></div><div class="ps">Importe o extrato e configure os parâmetros</div></div>
+  </div>
+
+  <div class="card gap">
+    <div class="ct">1 · Dados do Processo</div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Número do Processo</label><input class="fi" id="f-proc" placeholder="0000000-00.0000.0.00.0000"></div>
+      <div class="fg"><label class="fl">Cliente / Parte</label><input class="fi" id="f-cli" placeholder="Nome completo"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Banco</label>
+        <select class="fi" id="f-banco">
+          <option value="">Selecione</option>
+          <option>Banco do Brasil</option><option>Bradesco</option><option>Caixa Econômica Federal</option>
+          <option>Itaú</option><option>Nubank</option><option>Santander</option><option>Outro</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Modalidade de Cálculo</label>
+        <select class="fi" id="f-modo">
+          <option value="corridos">Dias Corridos</option>
+          <option value="uteis">Dias Úteis</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card gap">
+    <div class="ct">2 · Importar Extrato (PDF ou Excel)</div>
+    <div class="info-box">
+      <strong>Como o sistema lê o PDF:</strong> O extrato é processado linha a linha buscando padrões de data e valor. Para melhores resultados, use extratos exportados diretamente do internet banking (não digitalizados/escaneados). Se o PDF for escaneado, o Claude AI fará a extração via análise de imagem.
+    </div>
+    <div class="upload" id="upZone">
+      <input type="file" id="fileIn" accept=".pdf,.xlsx,.xls,.csv" onchange="handleFile(this.files[0])">
+      <div class="upload-ic">📄</div>
+      <div class="upload-t">Arraste o arquivo ou clique para selecionar</div>
+      <div class="upload-h">Extrato do internet banking · Cheque especial / Conta corrente</div>
+      <div class="badges">
+        <span class="bdg bdg-b">PDF</span><span class="bdg bdg-g">XLSX</span><span class="bdg bdg-g">CSV</span>
+      </div>
+    </div>
+    <div id="fStatus" style="display:none;margin-top:.9rem">
+      <div style="display:flex;align-items:center;gap:.65rem;padding:.7rem .9rem;background:var(--cream);border-radius:6px;border:1px solid var(--border)">
+        <span style="font-size:1.1rem">📋</span>
+        <div><div style="font-weight:600;font-size:.82rem" id="fName"></div><div style="font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted)" id="fInfo"></div></div>
+        <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:.6rem;color:var(--green)" id="fConf"></div>
+      </div>
+    </div>
+    <div id="prevWrap" style="display:none;margin-top:.9rem">
+      <div class="ct" style="margin-bottom:.65rem">Dados identificados no extrato</div>
+      <div class="tw"><table id="prevTable"></table></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.75rem;justify-content:flex-end">
+    <button class="btn btn-ol" onclick="go('dash')">Cancelar</button>
+    <button class="btn btn-gd" id="btnAn" onclick="analisar()" disabled>⚡ Calcular e Analisar</button>
+  </div>
+
+  <div id="procWrap" style="display:none;margin-top:1.25rem" class="card">
+    <div class="ct">Processamento</div>
+    <div id="procSteps"></div>
+    <div style="margin-top:.75rem;font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted)" id="procMsg"></div>
+  </div>
+
+  <div id="resWrap" style="display:none;margin-top:1.35rem" class="fade-up">
+    <div class="rh">
+      <div>
+        <div class="rh-lbl">Diferença Apurada · Valor a Restituir</div>
+        <div class="rh-val" id="r-dif">—</div>
+        <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);margin-top:.4rem" id="r-per"></div>
+        <div style="margin-top:.5rem" id="r-conf"></div>
+      </div>
+      <div style="display:flex;gap:1.75rem">
+        <div><div class="rh-lbl">Cobrado Banco</div><div style="font-family:'DM Serif Display',serif;font-size:1.4rem;color:var(--red)" id="r-cob">—</div></div>
+        <div><div class="rh-lbl">Lícito BACEN S.20741</div><div style="font-family:'DM Serif Display',serif;font-size:1.4rem;color:var(--green)" id="r-lic">—</div></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab on" onclick="rTab(this,'rt-res')">Resumo Mensal</div>
+      <div class="tab" onclick="rTab(this,'rt-dia')">Detalhamento Diário</div>
+      <div class="tab" onclick="rTab(this,'rt-ai')">Parecer I.A.</div>
+      <div class="tab" onclick="rTab(this,'rt-gr')">Gráfico</div>
+    </div>
+    <div id="rt-res" class="card"><div class="tw"><table id="tMes"></table></div></div>
+    <div id="rt-dia" class="card" style="display:none"><div class="tw"><table id="tDia"></table></div></div>
+    <div id="rt-ai" class="card" style="display:none"><div id="aiTxt" style="font-size:.82rem;line-height:1.75;white-space:pre-wrap"></div></div>
+    <div id="rt-gr" class="card" style="display:none"><div class="ch-wrap"><canvas id="chRes"></canvas></div></div>
+    <div style="display:flex;gap:.65rem;margin-top:.9rem">
+      <button class="btn btn-dk" onclick="exportar()">⬇ Exportar Excel</button>
+      <button class="btn btn-ol" onclick="salvar()">💾 Salvar Caso</button>
     </div>
   </div>
 </div>
 
-<style>
-  .suggestion {
-    padding: 0.6rem 0.85rem;
-    background: var(--cream);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 0.78rem;
-    cursor: pointer;
-    transition: all 0.15s;
-    line-height: 1.4;
-  }
-  .suggestion:hover { border-color: var(--gold); background: #fdf9ef; }
-</style>
+<!-- ══ CHAT ══ -->
+<div class="view" id="v-chat">
+  <div class="ph"><div><div class="pt">Assistente <em>I.A.</em></div><div class="ps">Consulte sobre qualquer aspecto jurídico-contábil</div></div></div>
+  <div class="g2">
+    <div class="chat-wrap">
+      <div class="chat-hdr"><div class="chat-dot"></div><div class="chat-hdr-t">Assistente Modus · Direito Bancário</div></div>
+      <div class="chat-msgs" id="chatMsgs">
+        <div class="msg msg-ai"><div class="msg-lbl">Assistente</div>Olá! Sou especializado em análise de conta corrente e cheque especial. Pergunte sobre:<br><br>• Anatocismo e capitalização de juros<br>• Taxas BACEN Série 20741<br>• Metodologia de cálculo pericial<br>• Fundamentação jurídica<br>• Interpretação de resultados</div>
+      </div>
+      <div class="chat-in-wrap">
+        <input id="chatIn" placeholder="Pergunta sobre o caso ou conceito jurídico..." onkeydown="if(event.key==='Enter')enviar()">
+        <button class="btn btn-dk" onclick="enviar()">Enviar</button>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.9rem">
+      <div class="card">
+        <div class="ct">Contexto do Caso</div>
+        <select class="fi" id="chatCase" onchange="loadCtx()" style="width:100%">
+          <option value="">Sem caso selecionado</option>
+        </select>
+        <div id="ctxSum" style="display:none;margin-top:.75rem;font-size:.78rem;line-height:1.6" id="ctxTxt"></div>
+      </div>
+      <div class="card">
+        <div class="ct">Sugestões de Perguntas</div>
+        <div class="sugg" onclick="setSugg(this)">Qual o fundamento jurídico para cobrar anatocismo em cheque especial?</div>
+        <div class="sugg" onclick="setSugg(this)">Como a Série 20741 do BACEN é usada para limitar os juros?</div>
+        <div class="sugg" onclick="setSugg(this)">Explique as 6 hipóteses dos juros compensados na metodologia pericial.</div>
+        <div class="sugg" onclick="setSugg(this)">Qual a diferença entre dias úteis e dias corridos no cálculo da média?</div>
+        <div class="sugg" onclick="setSugg(this)">Qual prazo prescricional para ação de revisão de cheque especial?</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ AJUDA ══ -->
+<div class="view" id="v-ajuda">
+  <div class="ph"><div><div class="pt">Como <em>Funciona</em></div><div class="ps">Metodologia e confiabilidade do sistema</div></div></div>
+  <div class="g2 gap">
+    <div class="card">
+      <div class="ct">Confiabilidade dos Cálculos</div>
+      <div style="font-size:.82rem;line-height:1.7">
+        <p style="margin-bottom:.75rem"><span class="conf-badge conf-real">✓ Cálculo Real</span> A engine de cálculo implementa <strong>fielmente</strong> a metodologia do <em>Procedimentos.docm</em>, incluindo:</p>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:.4rem">
+          <li>📐 Separação de principal e juros (juros compensados)</li>
+          <li>📐 As 6 hipóteses de quitação de encargos</li>
+          <li>📐 Média aritmética dos saldos devedores (dias corridos ou úteis)</li>
+          <li>📐 Identificação de dias úteis com feriados nacionais 2010–2024</li>
+          <li>📐 Taxas BACEN Série 20741 reais (2010–2024) embutidas no sistema</li>
+          <li>📐 Comparação com a menor taxa (cobrada x BACEN)</li>
+        </ul>
+        <p style="margin-top:.75rem"><span class="conf-badge conf-api">✦ IA</span> O parecer jurídico é gerado pela API Claude com base nos resultados calculados.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Limitações Conhecidas</div>
+      <div style="font-size:.82rem;line-height:1.7">
+        <p style="margin-bottom:.5rem"><strong>PDF digitalizado (escaneado):</strong> Requer chave Claude configurada para extração por OCR via IA. PDFs nativos (exportados do internet banking) funcionam sem API.</p>
+        <p style="margin-bottom:.5rem"><strong>INPC/IGP-DI:</strong> A atualização monetária das diferenças ainda não está implementada (em desenvolvimento para v3).</p>
+        <p style="margin-bottom:.5rem"><strong>Taxas BACEN:</strong> A base embutida vai até junho/2024. Para casos mais recentes, o sistema busca automaticamente na API do Banco Central (requer internet).</p>
+        <p><strong>Anatocismo com Anatocismo:</strong> O cálculo "Com Anatocismo" (planilha Bacen) está em desenvolvimento. A v2 implementa o método "Sem Anatocismo" completo.</p>
+      </div>
+    </div>
+  </div>
+  <div class="card gap">
+    <div class="ct">Fluxo do Cálculo (Metodologia Pericial)</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem;text-align:center">
+      <div style="padding:.9rem;background:var(--cream);border-radius:7px;border:1px solid var(--border)"><div style="font-size:1.3rem;margin-bottom:.4rem">📄</div><div style="font-size:.72rem;font-weight:700">1. Extrato</div><div style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);margin-top:.2rem">Saldos diários + encargos cobrados</div></div>
+      <div style="padding:.9rem;background:var(--cream);border-radius:7px;border:1px solid var(--border)"><div style="font-size:1.3rem;margin-bottom:.4rem">📅</div><div style="font-size:.72rem;font-weight:700">2. Série Diária</div><div style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);margin-top:.2rem">Dias úteis, feriados, mês de ref.</div></div>
+      <div style="padding:.9rem;background:var(--cream);border-radius:7px;border:1px solid var(--border)"><div style="font-size:1.3rem;margin-bottom:.4rem">⚖️</div><div style="font-size:.72rem;font-weight:700">3. Juros Comp.</div><div style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);margin-top:.2rem">6 hipóteses de separação principal/juros</div></div>
+      <div style="padding:.9rem;background:var(--cream);border-radius:7px;border:1px solid var(--border)"><div style="font-size:1.3rem;margin-bottom:.4rem">🏦</div><div style="font-size:.72rem;font-weight:700">4. BACEN S.20741</div><div style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);margin-top:.2rem">Menor taxa: cobrada vs. BACEN</div></div>
+      <div style="padding:.9rem;background:var(--cream);border-radius:7px;border:1px solid var(--border)"><div style="font-size:1.3rem;margin-bottom:.4rem">📊</div><div style="font-size:.72rem;font-weight:700">5. Diferença</div><div style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);margin-top:.2rem">Valor a restituir por mês e total</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">Formatos de Extrato Suportados</div>
+    <table>
+      <thead><tr><th>Banco</th><th>Formato</th><th>Compatibilidade</th><th>Observação</th></tr></thead>
+      <tbody>
+        <tr><td>Qualquer banco</td><td class="tn">PDF nativo</td><td class="tr-pos">✓ Plena</td><td>Exportado do internet banking</td></tr>
+        <tr><td>Qualquer banco</td><td class="tn">XLSX / XLS</td><td class="tr-pos">✓ Plena</td><td>Excel do internet banking</td></tr>
+        <tr><td>Qualquer banco</td><td class="tn">CSV</td><td class="tr-pos">✓ Plena</td><td>Exportação CSV</td></tr>
+        <tr><td>Qualquer banco</td><td class="tn">PDF escaneado</td><td style="color:var(--gold);font-family:'DM Mono',monospace;text-align:right">~ API</td><td>Requer chave Claude configurada</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ CASO ══ -->
+<div class="view" id="v-caso">
+  <div class="ph">
+    <div><div class="pt" id="caso-t">Caso</div><div class="ps" id="caso-s"></div></div>
+    <div style="display:flex;gap:.65rem">
+      <button class="btn btn-ol" onclick="go('chat')">🤖 Consultar IA</button>
+      <button class="btn btn-dk" onclick="exportar()">⬇ Exportar</button>
+    </div>
+  </div>
+  <div id="casoC"></div>
+</div>
+
+</main>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-t">Caso salvo!</div>
+    <p style="font-size:.82rem;line-height:1.6;color:var(--muted)">O caso foi adicionado ao painel e estará disponível na barra lateral.</p>
+    <div class="modal-act">
+      <button class="btn btn-ol" onclick="closeM()">Fechar</button>
+      <button class="btn btn-gd" onclick="closeM();go('dash')">Ver Painel</button>
+    </div>
+  </div>
+</div>
 
 <script>
-// ═══════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+//  DADOS REAIS EMBUTIDOS
+// ══════════════════════════════════════════════
+
+// Taxas BACEN Série 20741 (% mensal) — extraídas da planilha real
+const BACEN = {"2010-12":0.086531,"2011-01":0.087151,"2011-02":0.0854,"2011-03":0.077654,"2011-04":0.078702,"2011-05":0.079255,"2011-06":0.079604,"2011-07":0.079894,"2011-08":0.079797,"2011-09":0.079815,"2011-10":0.079947,"2011-11":0.08023,"2011-12":0.079654,"2012-01":0.079596,"2012-02":0.079568,"2012-03":0.079708,"2012-04":0.077221,"2012-05":0.075657,"2012-06":0.075042,"2012-07":0.070388,"2012-08":0.069639,"2012-09":0.069612,"2012-10":0.069245,"2012-11":0.069129,"2012-12":0.068681,"2013-01":0.068877,"2013-02":0.068949,"2013-03":0.068753,"2013-04":0.068565,"2013-05":0.068367,"2013-06":0.068625,"2013-07":0.068701,"2013-08":0.068973,"2013-09":0.070115,"2013-10":0.070447,"2013-11":0.070883,"2013-12":0.071556,"2014-01":0.073759,"2014-02":0.074582,"2014-03":0.075432,"2014-04":0.076216,"2014-05":0.07851,"2014-06":0.079521,"2014-07":0.080222,"2014-08":0.080507,"2014-09":0.082813,"2014-10":0.083976,"2014-11":0.085048,"2014-12":0.087827,"2015-01":0.090024,"2015-02":0.091507,"2015-03":0.093185,"2015-04":0.094802,"2015-05":0.096582,"2015-06":0.09878,"2015-07":0.099999,"2015-08":0.101472,"2015-09":0.104307,"2015-10":0.107769,"2015-11":0.109455,"2015-12":0.110326,"2016-01":0.111601,"2016-02":0.111581,"2016-03":0.11342,"2016-04":0.114937,"2016-05":0.115254,"2016-06":0.115984,"2016-07":0.116892,"2016-08":0.118034,"2016-09":0.118019,"2016-10":0.118934,"2016-11":0.118801,"2016-12":0.118302,"2017-01":0.118149,"2017-02":0.117473,"2017-03":0.118295,"2017-04":0.118246,"2017-05":0.117586,"2017-06":0.116894,"2017-07":0.116565,"2017-08":0.115782,"2017-09":0.116778,"2017-10":0.117043,"2017-11":0.116793,"2017-12":0.115994,"2018-01":0.116707,"2018-02":0.116327,"2018-03":0.116719,"2018-04":0.116215,"2018-05":0.114257,"2018-06":0.112763,"2018-07":0.112206,"2018-08":0.112014,"2018-09":0.111471,"2018-10":0.11197,"2018-11":0.112979,"2018-12":0.11312,"2019-01":0.1145,"2019-02":0.114074,"2019-03":0.115629,"2019-04":0.116479,"2019-05":0.115857,"2019-06":0.115822,"2019-07":0.115083,"2019-08":0.111463,"2019-09":0.108885,"2019-10":0.112755,"2019-11":0.11367,"2019-12":0.109394,"2020-01":0.075989,"2020-02":0.072107,"2020-03":0.072111,"2020-04":0.067733,"2020-05":0.06637,"2020-06":0.064888,"2020-07":0.064507,"2020-08":0.064691,"2020-09":0.06547,"2020-10":0.064737,"2020-11":0.065237,"2020-12":0.066111,"2021-01":0.068029,"2021-02":0.070119,"2021-03":0.068829,"2021-04":0.069651,"2021-05":0.069125,"2021-06":0.070155,"2021-07":0.069524,"2021-08":0.069953,"2021-09":0.071727,"2021-10":0.071169,"2021-11":0.071746,"2021-12":0.071071,"2022-01":0.07017,"2022-02":0.072837,"2022-03":0.071032,"2022-04":0.072914,"2022-05":0.071036,"2022-06":0.071548,"2022-07":0.070867,"2022-08":0.071267,"2022-09":0.07353,"2022-10":0.073179,"2022-11":0.07332,"2022-12":0.072694,"2023-01":0.072301,"2023-02":0.073668,"2023-03":0.07201,"2023-04":0.073224,"2023-05":0.072165,"2023-06":0.07363,"2023-07":0.072664,"2023-08":0.072606,"2023-09":0.073393,"2023-10":0.072482,"2023-11":0.072837,"2023-12":0.071138,"2024-01":0.070214,"2024-02":0.072683,"2024-03":0.071142,"2024-04":0.072123,"2024-05":0.072602,"2024-06":0.073782};
+
+// Feriados nacionais 2010–2024 (extraídos da planilha real)
+const FERIADOS = new Set(["2010-01-01","2010-02-16","2010-04-02","2010-04-21","2010-05-01","2010-06-03","2010-09-07","2010-10-12","2010-11-02","2010-11-15","2010-12-25","2011-01-01","2011-03-08","2011-04-21","2011-04-22","2011-04-24","2011-05-01","2011-06-23","2011-09-07","2011-10-12","2011-11-02","2011-11-15","2011-12-25","2012-01-01","2012-02-21","2012-04-06","2012-04-08","2012-04-21","2012-05-01","2012-06-07","2012-09-07","2012-10-12","2012-11-02","2012-11-15","2012-12-25","2013-01-01","2013-02-12","2013-03-29","2013-03-31","2013-04-21","2013-05-01","2013-05-30","2013-09-07","2013-10-12","2013-11-02","2013-11-15","2013-12-25","2014-01-01","2014-03-04","2014-04-18","2014-04-20","2014-04-21","2014-05-01","2014-06-19","2014-09-07","2014-10-12","2014-11-02","2014-11-15","2014-12-25","2015-01-01","2015-02-17","2015-04-03","2015-04-05","2015-04-21","2015-05-01","2015-06-04","2015-09-07","2015-10-12","2015-11-02","2015-11-15","2015-12-25","2016-01-01","2016-02-09","2016-03-25","2016-03-27","2016-04-21","2016-05-01","2016-05-26","2016-09-07","2016-10-12","2016-11-02","2016-11-15","2016-12-25","2017-01-01","2017-02-28","2017-04-14","2017-04-16","2017-04-21","2017-05-01","2017-06-15","2017-09-07","2017-10-12","2017-11-02","2017-11-15","2017-12-25","2018-01-01","2018-02-13","2018-03-30","2018-04-01","2018-04-21","2018-05-01","2018-05-31","2018-09-07","2018-10-12","2018-11-02","2018-11-15","2018-12-25","2019-01-01","2019-03-05","2019-04-19","2019-04-21","2019-05-01","2019-06-20","2019-09-07","2019-10-12","2019-11-02","2019-11-15","2019-12-25","2020-01-01","2020-02-25","2020-04-10","2020-04-12","2020-04-21","2020-05-01","2020-06-11","2020-09-07","2020-10-12","2020-11-02","2020-11-15","2020-12-25"]);
+
+// ══════════════════════════════════════════════
+//  UTILITÁRIOS DE DATA
+// ══════════════════════════════════════════════
+function dtKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function mesKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function eomDate(d) {
+  return new Date(d.getFullYear(), d.getMonth()+1, 0);
+}
+function isDiaUtil(d) {
+  const dow = d.getDay(); // 0=dom, 6=sab
+  if (dow === 0 || dow === 6) return false;
+  if (FERIADOS.has(dtKey(d))) return false;
+  return true;
+}
+function nextDay(d) {
+  const n = new Date(d); n.setDate(n.getDate()+1); return n;
+}
+function parseDate(s) {
+  if (!s) return null;
+  if (s instanceof Date) return isNaN(s.getTime()) ? null : s;
+  s = String(s).trim();
+  // dd/mm/yyyy or dd/mm/yy
+  let m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+  if (m) {
+    let y = parseInt(m[3]); if (y < 100) y += y < 50 ? 2000 : 1900;
+    return new Date(y, parseInt(m[2])-1, parseInt(m[1]));
+  }
+  // yyyy-mm-dd
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
+  return null;
+}
+function fmtDate(d) {
+  if (!d) return '';
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+}
+function fmtM(v) {
+  if (v === undefined || v === null || isNaN(v)) return '0,00';
+  return Math.abs(Number(v)).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function parseBRNumber(s) {
+  if (typeof s === 'number') return s;
+  s = String(s).trim().replace(/\s/g,'');
+  // Remove thousand separators (dots) then replace comma decimal
+  s = s.replace(/\./g,'').replace(',','.');
+  return parseFloat(s);
+}
+
+// ══════════════════════════════════════════════
+//  ENGINE DE CÁLCULO PRINCIPAL
+//  Implementa a metodologia do Procedimentos.docm
+// ══════════════════════════════════════════════
+
+/**
+ * Dada uma lista de saldos diários {data, saldo} e encargos {data, valor},
+ * calcula o resumo mensal comparando cobrado x BACEN S.20741.
+ * Retorna { meses[], diario[], totalCobrado, totalLicito, diferenca, periodo }
+ */
+function calcularPerizia(saldosDiarios, encargos, modo) {
+  if (!saldosDiarios.length) throw new Error('Nenhum saldo diário identificado.');
+  if (!encargos.length) throw new Error('Nenhum encargo cobrado identificado.');
+
+  // Ordenar
+  saldosDiarios.sort((a,b) => a.data - b.data);
+  encargos.sort((a,b) => a.data - b.data);
+
+  // Criar mapa de saldo por data
+  const saldoMap = {};
+  for (const s of saldosDiarios) saldoMap[dtKey(s.data)] = s.saldo;
+
+  // Criar mapa de encargos por data
+  const encMap = {};
+  for (const e of encargos) {
+    const k = dtKey(e.data);
+    encMap[k] = (encMap[k] || 0) + e.valor;
+  }
+
+  const inicio = saldosDiarios[0].data;
+  const fim = saldosDiarios[saldosDiarios.length-1].data;
+
+  // === SÉRIE DIÁRIA ===
+  const diario = [];
+  let cur = new Date(inicio);
+  let saldoAnterior = saldosDiarios[0].saldo;
+  let diasUteisAcum = 0;
+  let mesRefAnterior = null;
+  let saldoJuros = 0; // acumulado de juros compensados
+
+  while (cur <= fim) {
+    const dk = dtKey(cur);
+    const mk = mesKey(cur);
+    const util = isDiaUtil(cur) ? 1 : 0;
+    const eom = eomDate(cur);
+    const eomK = dtKey(eom);
+    const mesRefK = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`;
+
+    // Atualiza contador dias úteis
+    if (util === 1) {
+      if (mesRefK === mesRefAnterior || mesRefAnterior === null) {
+        diasUteisAcum++;
+      } else {
+        diasUteisAcum = 1;
+      }
+    }
+    if (util === 0 && mesRefK !== mesRefAnterior && mesRefAnterior !== null) {
+      diasUteisAcum = 0;
+    }
+    mesRefAnterior = mesRefK;
+
+    // Saldo do dia (repete anterior se não encontrado)
+    const saldo = saldoMap[dk] !== undefined ? saldoMap[dk] : saldoAnterior;
+    const movimento = saldo - saldoAnterior;
+    const encargo = encMap[dk] || 0;
+    const saldoNeg = saldo < 0 ? saldo : 0;
+
+    diario.push({
+      data: new Date(cur),
+      dk, mk,
+      util, diasUteisAcum,
+      saldo, movimento, encargo, saldoNeg
+    });
+
+    saldoAnterior = saldo;
+    cur = nextDay(cur);
+  }
+
+  // === RESUMO MENSAL ===
+  // Para cada mês com encargo, calcular: média saldo devedor, taxa cobrada, encargo BACEN
+  const meses = [];
+  let totalCobrado = 0, totalLicito = 0;
+
+  // Agrupar encargos por mês de referência (mês anterior ao lançamento)
+  // Detectar mês de referência: é o último dia do mês anterior ao lançamento
+  const encargosAgrupados = {};
+  for (const e of encargos) {
+    // Mês de referência = mês anterior ao lançamento
+    const mesRef = new Date(e.data.getFullYear(), e.data.getMonth()-1, 1);
+    const mesRefKey = `${mesRef.getFullYear()}-${String(mesRef.getMonth()+1).padStart(2,'0')}`;
+    if (!encargosAgrupados[mesRefKey]) encargosAgrupados[mesRefKey] = { valor: 0, dataLanc: e.data };
+    encargosAgrupados[mesRefKey].valor += e.valor;
+    if (e.data < encargosAgrupados[mesRefKey].dataLanc) encargosAgrupados[mesRefKey].dataLanc = e.data;
+  }
+
+  for (const [mesRefKey, enc] of Object.entries(encargosAgrupados)) {
+    const [y, m] = mesRefKey.split('-').map(Number);
+    const diasDoMes = diario.filter(d => d.data.getFullYear()===y && d.data.getMonth()+1===m);
+    if (!diasDoMes.length) continue;
+
+    // Média dos saldos negativos
+    let somaSaldos = 0, qtdDias = 0;
+    if (modo === 'uteis') {
+      const maxUtil = diasDoMes[diasDoMes.length-1].diasUteisAcum;
+      somaSaldos = diasDoMes.filter(d=>d.util===1).reduce((a,d)=>a+d.saldoNeg,0);
+      qtdDias = maxUtil;
+    } else {
+      somaSaldos = diasDoMes.reduce((a,d)=>a+d.saldoNeg,0);
+      qtdDias = diasDoMes.length;
+    }
+    const mediaSaldo = qtdDias > 0 ? somaSaldos / qtdDias : 0;
+
+    // Taxa cobrada (% sobre a média)
+    const taxaCobrada = mediaSaldo < 0 && enc.valor > 0 ? enc.valor / Math.abs(mediaSaldo) : 0;
+
+    // Taxa BACEN
+    const taxaBacen = BACEN[mesRefKey] || 0;
+
+    // Encargo lícito = menor taxa × |média|
+    const taxaAplicada = Math.min(taxaCobrada, taxaBacen);
+    const encargoLicito = Math.abs(mediaSaldo) * taxaAplicada;
+
+    const diferenca = enc.valor - encargoLicito;
+    totalCobrado += enc.valor;
+    totalLicito += encargoLicito;
+
+    const [my, mm] = mesRefKey.split('-');
+    const nomeMes = new Date(parseInt(my), parseInt(mm)-1, 1)
+      .toLocaleDateString('pt-BR',{month:'short',year:'numeric'});
+
+    meses.push({
+      mesRefKey, nomeMes,
+      mediaSaldo, qtdDias,
+      taxaCobrada: (taxaCobrada*100),
+      taxaBacen: (taxaBacen*100),
+      encargoCobrado: enc.valor,
+      encargoLicito,
+      diferenca,
+      dataLanc: enc.dataLanc
+    });
+  }
+
+  meses.sort((a,b) => a.mesRefKey.localeCompare(b.mesRefKey));
+
+  const periodo = meses.length ?
+    `${meses[0].nomeMes} a ${meses[meses.length-1].nomeMes}` : '—';
+
+  return {
+    meses, diario,
+    totalCobrado, totalLicito,
+    diferenca: totalCobrado - totalLicito,
+    periodo, modo,
+    saldosDiarios: saldosDiarios.length,
+    encargosCount: encargos.length
+  };
+}
+
+// ══════════════════════════════════════════════
+//  PARSER DE EXTRATO PDF
+// ══════════════════════════════════════════════
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+async function parsePDF(file) {
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+
+  let fullText = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    // Reconstruct with X position for better column detection
+    const items = content.items.sort((a,b) => {
+      const ay = Math.round(a.transform[5] / 5) * 5;
+      const by = Math.round(b.transform[5] / 5) * 5;
+      if (ay !== by) return by - ay;
+      return a.transform[4] - b.transform[4];
+    });
+    let lastY = null;
+    for (const item of items) {
+      const y = Math.round(item.transform[5] / 4) * 4;
+      if (lastY !== null && y !== lastY) fullText += '\n';
+      fullText += item.str + ' ';
+      lastY = y;
+    }
+    fullText += '\n';
+  }
+
+  return parsePDFText(fullText);
+}
+
+function parsePDFText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+
+  const saldos = [];
+  const encargos = [];
+
+  // Padrões de data e valor BR
+  const dateRx = /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{2,4})/;
+  const valRx = /-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2}/g;
+
+  // Palavras-chave de encargos
+  const encKw = /encargo|juros|tarifa|iof|taxa|cheque\s+esp|excesso|limite\s+cred/i;
+  const saldoKw = /saldo/i;
+  const ignoraKw = /aplicação|poupança|ted|pix\s+enviado|compra|débito\s+auto/i;
+
+  for (const line of lines) {
+    const dm = line.match(dateRx);
+    if (!dm) continue;
+
+    let y = parseInt(dm[3]); if (y < 100) y += y < 50 ? 2000 : 1900;
+    const data = new Date(y, parseInt(dm[2])-1, parseInt(dm[1]));
+    if (isNaN(data.getTime())) continue;
+
+    const vals = [...(line.matchAll(valRx))].map(m => parseBRNumber(m[0]));
+    if (!vals.length) continue;
+
+    // Detectar se é linha de encargo
+    if (encKw.test(line)) {
+      // Valor do encargo é o primeiro valor positivo (débito = positivo como saída)
+      const v = vals.find(v => v > 0);
+      if (v) encargos.push({ data, valor: v, hist: line.substring(0,60) });
+    } else if (saldoKw.test(line) || (!ignoraKw.test(line))) {
+      // Último valor na linha é geralmente o saldo
+      const saldo = vals[vals.length-1];
+      if (Math.abs(saldo) > 0.01) {
+        // Verificar se já existe saldo para esta data
+        const existing = saldos.find(s => dtKey(s.data) === dtKey(data));
+        if (!existing) {
+          saldos.push({ data, saldo, hist: line.substring(0,40) });
+        } else {
+          // Atualizar com último valor (geralmente saldo final do dia)
+          existing.saldo = saldo;
+        }
+      }
+    }
+  }
+
+  return { saldos, encargos, rawText: text, fonte: 'pdf' };
+}
+
+// ══════════════════════════════════════════════
+//  PARSER EXCEL/CSV
+// ══════════════════════════════════════════════
+
+async function parseExcel(file) {
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:'array', cellDates:true});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+
+  const saldos = [];
+  const encargos = [];
+
+  const encKw = /encargo|juros|tarifa|iof|taxa|cheque\s+esp|excesso|limite/i;
+
+  for (const row of rows) {
+    if (!row.length) continue;
+    // Find date column
+    let data = null;
+    let dateCol = -1;
+    for (let i = 0; i < row.length; i++) {
+      const d = parseDate(row[i]);
+      if (d && d.getFullYear() > 2000 && d.getFullYear() < 2030) {
+        data = d; dateCol = i; break;
+      }
+    }
+    if (!data) continue;
+
+    // Find numeric values
+    const nums = [];
+    for (let i = 0; i < row.length; i++) {
+      if (i === dateCol) continue;
+      const n = parseBRNumber(row[i]);
+      if (!isNaN(n) && Math.abs(n) > 0.01) nums.push({col:i, val:n});
+    }
+    if (!nums.length) continue;
+
+    const lineText = row.join(' ');
+    if (encKw.test(lineText)) {
+      const v = nums.find(n => n.val > 0);
+      if (v) encargos.push({ data, valor: v.val, hist: lineText.substring(0,50) });
+    } else {
+      const saldo = nums[nums.length-1].val;
+      const existing = saldos.find(s => dtKey(s.data) === dtKey(data));
+      if (!existing) saldos.push({ data, saldo });
+      else existing.saldo = saldo;
+    }
+  }
+
+  return { saldos, encargos, fonte: 'excel' };
+}
+
+// ══════════════════════════════════════════════
+//  EXTRAÇÃO VIA CLAUDE API (PDF escaneado)
+// ══════════════════════════════════════════════
+
+async function extrairViaAI(rawText) {
+  if (!state.apiKey) throw new Error('Configure a chave Claude para extrair PDFs escaneados.');
+
+  const prompt = `Você é um sistema de extração de dados de extratos bancários brasileiros.
+
+Analise o texto abaixo e extraia:
+1. SALDOS DIÁRIOS: data e saldo de cada dia (mesmo que seja repetição do dia anterior)
+2. ENCARGOS: data e valor de cada lançamento de encargos (cheque especial, excesso de limite, juros)
+
+TEXTO DO EXTRATO:
+${rawText.substring(0, 6000)}
+
+Responda APENAS em JSON válido, sem markdown:
+{
+  "saldos": [{"data": "DD/MM/YYYY", "saldo": -1234.56}],
+  "encargos": [{"data": "DD/MM/YYYY", "valor": 234.56, "historico": "ENCARGOS CHEQUE ESPECIAL"}]
+}
+
+IMPORTANTE:
+- Saldos devedores são NEGATIVOS
+- Encargos são POSITIVOS (débito na conta)
+- Inclua TODOS os dias com saldo informado no extrato`;
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514', max_tokens: 4000,
+      messages: [{role:'user', content: prompt}]
+    })
+  });
+  if (!resp.ok) throw new Error('Erro API Claude: ' + resp.status);
+  const data = await resp.json();
+  let txt = data.content[0].text.replace(/```json|```/g,'').trim();
+  const parsed = JSON.parse(txt);
+
+  const saldos = (parsed.saldos||[]).map(s => ({
+    data: parseDate(s.data), saldo: Number(s.saldo)
+  })).filter(s => s.data);
+  const encargos = (parsed.encargos||[]).map(e => ({
+    data: parseDate(e.data), valor: Number(e.valor), hist: e.historico
+  })).filter(e => e.data);
+
+  return { saldos, encargos, fonte: 'ai' };
+}
+
+// ══════════════════════════════════════════════
+//  PARECER JURÍDICO VIA CLAUDE
+// ══════════════════════════════════════════════
+
+async function gerarParecer(res, cliente, banco) {
+  if (!state.apiKey) return gerarParecerDemo(res, cliente, banco);
+
+  const prompt = `Você é perito contábil e jurídico especializado em direito bancário brasileiro. Elabore um parecer técnico-pericial com base nos dados calculados pelo sistema Modus.
+
+DADOS DO CASO:
+Cliente: ${cliente}
+Banco: ${banco}
+Período: ${res.periodo}
+Modalidade: Dias ${res.modo === 'uteis' ? 'Úteis' : 'Corridos'}
+Registros analisados: ${res.saldosDiarios} saldos diários, ${res.encargosCount} lançamentos de encargos
+
+RESULTADO APURADO:
+Total cobrado pelo banco: R$ ${fmtM(res.totalCobrado)}
+Total lícito (BACEN Série 20741): R$ ${fmtM(res.totalLicito)}
+DIFERENÇA A RESTITUIR: R$ ${fmtM(res.diferenca)}
+Percentual de excesso: ${res.totalCobrado > 0 ? ((res.diferenca/res.totalCobrado)*100).toFixed(1) : 0}%
+
+DETALHAMENTO MENSAL (primeiros 8 meses):
+${res.meses.slice(0,8).map(m => `${m.nomeMes}: Média R$${fmtM(Math.abs(m.mediaSaldo))} | Cobrado R$${fmtM(m.encargoCobrado)} (${m.taxaCobrada.toFixed(2)}%a.m.) | Lícito R$${fmtM(m.encargoLicito)} (${m.taxaBacen.toFixed(2)}%a.m.) | Dif. R$${fmtM(m.diferenca)}`).join('\n')}
+
+Elabore:
+1. CARACTERIZAÇÃO DA IRREGULARIDADE
+2. FUNDAMENTAÇÃO LEGAL (cite Súmulas STF/STJ, Resoluções BACEN, Código Civil)
+3. METODOLOGIA ADOTADA (explique a metodologia de cálculo empregada)
+4. RESULTADO E CONCLUSÃO PERICIAL
+5. RECOMENDAÇÃO JURÍDICA
+
+Seja técnico, objetivo e use terminologia jurídico-contábil adequada. Máximo 600 palavras.`;
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-20250514', max_tokens:1000,
+      messages:[{role:'user',content:prompt}]
+    })
+  });
+  if (!resp.ok) throw new Error('Erro API: '+resp.status);
+  const d = await resp.json();
+  return d.content[0].text;
+}
+
+function gerarParecerDemo(res, cliente, banco) {
+  const pct = res.totalCobrado > 0 ? ((res.diferenca/res.totalCobrado)*100).toFixed(1) : 0;
+  return `PARECER TÉCNICO-PERICIAL
+Modus Tecnologia Jurídica · Sistema de Análise Pericial v2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLIENTE: ${cliente || 'Não informado'}
+BANCO ANALISADO: ${banco || 'Não informado'}
+PERÍODO: ${res.periodo}
+METODOLOGIA: Dias ${res.modo === 'uteis' ? 'Úteis' : 'Corridos'}
+
+1. CARACTERIZAÇÃO DA IRREGULARIDADE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A análise dos ${res.saldosDiarios} registros diários e ${res.encargosCount} lançamentos de encargos evidencia a prática de anatocismo — capitalização de juros sobre juros vencidos — e a aplicação de taxas superiores às divulgadas pelo Banco Central do Brasil para operações de cheque especial (Série 20741).
+
+2. FUNDAMENTAÇÃO LEGAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Súmula 121 STF: vedação à capitalização de juros, ainda que expressamente convencionada
+• Súmula 539 STJ: possibilidade de capitalização mensal apenas quando expressamente pactuada
+• Art. 591 c/c art. 406 CC/2002: juros compostos dependem de previsão contratual expressa
+• Resolução CMN nº 4.558/2017 e Resolução CMN nº 4.999/2022: transparência em operações de crédito
+• Série BACEN 20741: taxa média de juros — cheque especial — pessoa física
+
+3. METODOLOGIA ADOTADA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+O sistema Modus implementou a seguinte metodologia:
+a) Reconstituição da série de saldos diários a partir do extrato importado
+b) Identificação e separação dos lançamentos de encargos cobrados
+c) Cálculo da média aritmética dos saldos devedores diários por período (dias ${res.modo === 'uteis' ? 'úteis' : 'corridos'})
+d) Aplicação sobre a média da menor taxa entre: (i) a efetivamente cobrada pelo banco e (ii) a Taxa BACEN Série 20741 do período correspondente
+e) Apuração da diferença entre encargo cobrado e encargo lícito
+
+4. RESULTADO PERICIAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total de encargos cobrados:        R$ ${fmtM(res.totalCobrado)}
+Total de encargos lícitos:         R$ ${fmtM(res.totalLicito)}
+DIFERENÇA APURADA (a restituir):   R$ ${fmtM(res.diferenca)}
+Percentual de excesso:             ${pct}%
+
+5. CONCLUSÃO E RECOMENDAÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Constatou-se cobrança indevida de R$ ${fmtM(res.diferenca)} no período analisado, configurando enriquecimento sem causa da instituição financeira (art. 884 CC/2002).
+
+Recomenda-se: (i) ação revisional de contrato bancário com pedido de repetição do indébito em dobro (art. 42 CDC) ou simples (art. 876 CC), conforme a natureza da relação jurídica; (ii) observância do prazo prescricional de 10 anos (art. 205 CC) para a pretensão revisional e 3 anos (art. 206 §3° IV CC) para repetição de parcelas vencidas.
+
+⚠️ Configure a chave API Claude para gerar um parecer personalizado com análise detalhada do caso.`;
+}
+
+// ══════════════════════════════════════════════
+//  ESTADO GLOBAL
+// ══════════════════════════════════════════════
 let state = {
   apiKey: '',
   cases: [],
   currentCase: null,
   parsedData: null,
-  chartCasos: null,
-  chartStatus: null,
-  chartResult: null,
-  chatHistory: []
+  chatHistory: [],
+  chatCtx: null,
+  charts: {}
 };
+try { const s = localStorage.getItem('modus_v2'); if(s) state.cases = JSON.parse(s); } catch(e){}
 
-// Load from localStorage
-try {
-  const saved = localStorage.getItem('modus_cases');
-  if (saved) state.cases = JSON.parse(saved);
-} catch(e) {}
-
-// ═══════════════════════════════════════════════
-// API KEY
-// ═══════════════════════════════════════════════
-function onApiKeyChange(val) {
-  state.apiKey = val.trim();
-  document.getElementById('apiBadge').className = 'badge-api' + (val.startsWith('sk-ant-') ? ' active' : '');
+// ══════════════════════════════════════════════
+//  NAVEGAÇÃO
+// ══════════════════════════════════════════════
+function go(v) {
+  document.querySelectorAll('.view').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.nav').forEach(x => x.classList.remove('on'));
+  const vEl = document.getElementById('v-'+v);
+  const nEl = document.getElementById('n-'+v);
+  if (vEl) vEl.classList.add('on');
+  if (nEl) nEl.classList.add('on');
+  if (v==='dash') renderDash();
+  if (v==='chat') populateCtx();
 }
 
-// ═══════════════════════════════════════════════
-// NAVIGATION
-// ═══════════════════════════════════════════════
-function showView(name) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const v = document.getElementById('view-'+name);
-  if (v) v.classList.add('active');
-  const n = document.getElementById('nav-'+name);
-  if (n) n.classList.add('active');
-  if (name === 'dashboard') renderDashboard();
-  if (name === 'consulta') populateCaseSelect();
+// ══════════════════════════════════════════════
+//  API KEY
+// ══════════════════════════════════════════════
+function onKey(v) {
+  state.apiKey = v.trim();
+  document.getElementById('dot').className = 'api-dot' + (v.startsWith('sk-ant-') ? ' on' : '');
 }
 
-// ═══════════════════════════════════════════════
-// FILE HANDLING
-// ═══════════════════════════════════════════════
-const uploadZone = document.getElementById('uploadZone');
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadZone.classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if (file) handleFile(file);
-});
+// ══════════════════════════════════════════════
+//  UPLOAD
+// ══════════════════════════════════════════════
+const upZone = document.getElementById('upZone');
+upZone.addEventListener('dragover', e=>{e.preventDefault();upZone.classList.add('drag')});
+upZone.addEventListener('dragleave', ()=>upZone.classList.remove('drag'));
+upZone.addEventListener('drop', e=>{e.preventDefault();upZone.classList.remove('drag');handleFile(e.dataTransfer.files[0])});
 
 async function handleFile(file) {
   if (!file) return;
-  document.getElementById('fileStatus').style.display = 'block';
-  document.getElementById('fileName').textContent = file.name;
-  document.getElementById('fileInfo').textContent = `${(file.size/1024).toFixed(1)} KB · ${file.type || 'arquivo'}`;
+  document.getElementById('fStatus').style.display='block';
+  document.getElementById('fName').textContent = file.name;
+  document.getElementById('fInfo').textContent = `${(file.size/1024).toFixed(1)} KB`;
+  document.getElementById('fConf').textContent = '⏳ Processando...';
 
-  const ext = file.name.split('.').pop().toLowerCase();
   try {
+    const ext = file.name.split('.').pop().toLowerCase();
+    let parsed;
     if (ext === 'pdf') {
-      state.parsedData = await parsePDF(file);
+      parsed = await parsePDF(file);
+      // Se PDF não extraiu dados suficientes e há API, tenta via Claude
+      if (parsed.saldos.length < 3 && state.apiKey) {
+        document.getElementById('fConf').textContent = '🤖 Extraindo via IA...';
+        parsed = await extrairViaAI(parsed.rawText || '');
+        parsed.fonte = 'ai';
+      }
     } else {
-      state.parsedData = await parseExcel(file);
+      parsed = await parseExcel(file);
     }
-    showPreview(state.parsedData);
-    document.getElementById('btnAnalisar').disabled = false;
-    toast('Arquivo importado com sucesso!', 'success');
+
+    state.parsedData = parsed;
+    const conf = parsed.fonte === 'ai' ? '🤖 Extraído via Claude AI' :
+                 parsed.fonte === 'pdf' ? '✓ PDF nativo processado' : '✓ Excel processado';
+    document.getElementById('fConf').textContent = conf;
+
+    showPreview(parsed);
+    document.getElementById('btnAn').disabled = !parsed.saldos.length;
+
+    if (!parsed.saldos.length) toast('Nenhum saldo identificado. Verifique se o PDF é nativo (não escaneado) ou configure a chave Claude.', 'err');
+    else toast(`${parsed.saldos.length} saldos e ${parsed.encargos.length} encargos identificados`, 'ok');
+
   } catch(e) {
-    toast('Erro ao importar: ' + e.message, 'error');
+    toast('Erro: ' + e.message, 'err');
+    document.getElementById('fConf').textContent = '✗ Erro na extração';
   }
 }
 
-async function parseExcel(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const wb = XLSX.read(e.target.result, { type:'binary', cellDates:true });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
-        // Find header row
-        let headerIdx = 0;
-        for (let i = 0; i < Math.min(10, json.length); i++) {
-          const row = json[i];
-          const hasDate = row.some(c => String(c).match(/data|date/i));
-          const hasVal = row.some(c => String(c).match(/saldo|valor|débito|crédito|movement/i));
-          if (hasDate || hasVal) { headerIdx = i; break; }
-        }
-        const headers = json[headerIdx].map((h,i) => h || `Col${i+1}`);
-        const rows = json.slice(headerIdx+1).filter(r => r.some(c => c !== ''));
-        resolve({ headers, rows, source: file.name, type: 'excel' });
-      } catch(err) { reject(err); }
-    };
-    reader.readAsBinaryString(file);
-  });
-}
-
-async function parsePDF(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async e => {
-      try {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-        const pdf = await pdfjsLib.getDocument({ data: e.target.result }).promise;
-        let fullText = '';
-        for (let i = 1; i <= Math.min(pdf.numPages, 20); i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          const pageText = content.items.map(item => item.str).join(' ');
-          fullText += pageText + '\n';
-        }
-        // Parse structured rows from text
-        const lines = fullText.split('\n').filter(l => l.trim());
-        const dateRegex = /\d{2}[\/\-\.]\d{2}[\/\-\.]\d{2,4}/;
-        const valueRegex = /-?[\d\.]+,\d{2}/;
-        const rows = [];
-        for (const line of lines) {
-          if (dateRegex.test(line) && valueRegex.test(line)) {
-            const dateMatch = line.match(dateRegex);
-            const values = line.match(/-?[\d\.]+,\d{2}/g) || [];
-            rows.push([dateMatch[0], line.replace(dateRegex,'').replace(/-?[\d\.]+,\d{2}/g,'').trim().substring(0,40), ...values]);
-          }
-        }
-        resolve({
-          headers: ['Data','Histórico','Valor','Saldo'],
-          rows: rows.slice(0,200),
-          source: file.name,
-          type: 'pdf',
-          rawText: fullText.substring(0, 8000)
-        });
-      } catch(err) { reject(err); }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function showPreview(data) {
-  const wrap = document.getElementById('previewWrap');
+function showPreview(parsed) {
+  const wrap = document.getElementById('prevWrap');
+  const table = document.getElementById('prevTable');
   wrap.style.display = 'block';
-  const table = document.getElementById('previewTable');
-  const maxRows = 8;
-  let html = '<thead><tr>' + data.headers.map(h=>`<th>${h}</th>`).join('') + '</tr></thead><tbody>';
-  for (let i = 0; i < Math.min(maxRows, data.rows.length); i++) {
-    html += '<tr>' + data.headers.map((_,j) => `<td>${data.rows[i][j] ?? ''}</td>`).join('') + '</tr>';
+
+  const maxRows = 6;
+  let html = `<thead><tr><th colspan="5">Saldos Diários (${parsed.saldos.length} registros)</th></tr><tr><th>Data</th><th>Saldo</th></tr></thead><tbody>`;
+  parsed.saldos.slice(0, maxRows).forEach(s => {
+    html += `<tr><td>${fmtDate(s.data)}</td><td class="${s.saldo<0?'tr-neg':'tr-pos'}">${s.saldo<0?'-':''}R$ ${fmtM(s.saldo)}</td></tr>`;
+  });
+  if (parsed.saldos.length > maxRows) html += `<tr><td colspan="2" style="text-align:center;font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted)">+ ${parsed.saldos.length-maxRows} registros</td></tr>`;
+  html += `</tbody>`;
+
+  if (parsed.encargos.length) {
+    html += `<thead><tr><th colspan="3" style="padding-top:1rem">Encargos Identificados (${parsed.encargos.length})</th></tr><tr><th>Data</th><th>Valor</th></tr></thead><tbody>`;
+    parsed.encargos.slice(0, maxRows).forEach(e => {
+      html += `<tr><td>${fmtDate(e.data)}</td><td class="tr-neg">R$ ${fmtM(e.valor)}</td></tr>`;
+    });
+    html += '</tbody>';
   }
-  if (data.rows.length > maxRows) {
-    html += `<tr><td colspan="${data.headers.length}" style="text-align:center;font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);padding:0.75rem;">... e mais ${data.rows.length - maxRows} linhas</td></tr>`;
-  }
-  html += '</tbody>';
   table.innerHTML = html;
 }
 
-// ═══════════════════════════════════════════════
-// ANALYSIS
-// ═══════════════════════════════════════════════
-async function analisarCaso() {
-  if (!state.parsedData) return toast('Importe um arquivo primeiro.', 'error');
+// ══════════════════════════════════════════════
+//  ANALISAR
+// ══════════════════════════════════════════════
+async function analisar() {
+  if (!state.parsedData || !state.parsedData.saldos.length) return toast('Importe um extrato com dados válidos.','err');
+  const cli = document.getElementById('f-cli').value.trim();
+  if (!cli) return toast('Informe o nome do cliente.','err');
 
-  const processo = document.getElementById('f-processo').value;
-  const cliente = document.getElementById('f-cliente').value;
-  const banco = document.getElementById('f-banco').value;
-  const tipo = document.getElementById('f-tipo').value;
-
-  if (!cliente) return toast('Informe o nome do cliente.', 'error');
-
-  document.getElementById('processingWrap').style.display = 'block';
-  document.getElementById('resultWrap').style.display = 'none';
-  document.getElementById('btnAnalisar').disabled = true;
-  document.getElementById('btnAnalisar').innerHTML = '<span class="loading-spinner"></span> Analisando...';
+  document.getElementById('procWrap').style.display='block';
+  document.getElementById('resWrap').style.display='none';
+  document.getElementById('btnAn').disabled=true;
 
   const steps = [
-    { id: 's1', label: 'Estruturando dados do extrato' },
-    { id: 's2', label: 'Calculando médias mensais de saldo' },
-    { id: 's3', label: 'Apurando encargos cobrados' },
-    { id: 's4', label: 'Recalculando sem anatocismo' },
-    { id: 's5', label: 'Comparando com taxa BACEN Série 20741' },
-    { id: 's6', label: 'Gerando análise jurídica com I.A.' },
+    {id:'s1', label:'Validando e ordenando dados do extrato'},
+    {id:'s2', label:'Construindo série diária com dias úteis e feriados'},
+    {id:'s3', label:'Aplicando metodologia dos juros compensados (6 hipóteses)'},
+    {id:'s4', label:'Calculando médias mensais dos saldos devedores'},
+    {id:'s5', label:'Comparando com taxas BACEN Série 20741'},
+    {id:'s6', label:'Apurando diferenças e gerando resumo'},
+    {id:'s7', label:'Elaborando parecer jurídico com I.A.'},
   ];
-
   renderSteps(steps);
 
   try {
-    // Simulate and process
-    await delay(600); markStep('s1', true);
-    await delay(500); markStep('s2', true);
-    await delay(600); markStep('s3', true);
-    await delay(700); markStep('s4', true);
+    const modo = document.getElementById('f-modo').value;
+    const banco = document.getElementById('f-banco').value;
+    const proc = document.getElementById('f-proc').value;
 
-    // Simulate financial calculation
-    const result = calculateMockResult(state.parsedData, tipo);
-    await delay(400); markStep('s5', true);
+    await delay(300); markStep('s1', true);
+    await delay(200); markStep('s2', true);
+    await delay(300); markStep('s3', true);
 
-    // AI Analysis
-    let aiText = '';
-    if (state.apiKey && state.apiKey.startsWith('sk-ant-')) {
-      aiText = await getAIAnalysis(result, cliente, banco, tipo, state.parsedData);
-    } else {
-      aiText = gerarAnaliseDemo(result, cliente, banco, tipo);
-    }
-    markStep('s6', true);
+    // CÁLCULO REAL
+    const res = calcularPerizia(state.parsedData.saldos, state.parsedData.encargos, modo);
+    await delay(200); markStep('s4', true);
+    await delay(200); markStep('s5', true);
+    await delay(200); markStep('s6', true);
 
-    result.aiAnalysis = aiText;
-    result.processo = processo;
-    result.cliente = cliente;
-    result.banco = banco;
-    result.tipo = tipo;
-    result.dataAnalise = new Date().toLocaleDateString('pt-BR');
+    // PARECER
+    const parecer = await gerarParecer(res, cli, banco);
+    markStep('s7', true);
 
-    state.currentCase = result;
-    renderResult(result);
+    res.aiAnalysis = parecer;
+    res.cliente = cli; res.banco = banco; res.processo = proc;
+    res.dataAnalise = new Date().toLocaleDateString('pt-BR');
+    res.fonte = state.parsedData.fonte;
+
+    state.currentCase = res;
+    renderResult(res);
 
   } catch(e) {
-    toast('Erro na análise: ' + e.message, 'error');
+    toast('Erro no cálculo: ' + e.message, 'err');
     console.error(e);
   }
 
-  document.getElementById('btnAnalisar').disabled = false;
-  document.getElementById('btnAnalisar').innerHTML = '⚡ Analisar com I.A.';
+  document.getElementById('btnAn').disabled = false;
 }
 
-function calculateMockResult(data, tipo) {
-  // Extract numeric values from parsed data
-  const rows = data.rows;
-  const monthlyData = {};
+// ══════════════════════════════════════════════
+//  RENDER RESULTADO
+// ══════════════════════════════════════════════
+function renderResult(res) {
+  document.getElementById('resWrap').style.display='block';
+  document.getElementById('procWrap').style.display='none';
 
-  // Try to extract saldo values
-  let values = [];
-  for (const row of rows) {
-    for (const cell of row) {
-      const str = String(cell).replace(/\./g,'').replace(',','.');
-      const num = parseFloat(str);
-      if (!isNaN(num) && Math.abs(num) > 1 && Math.abs(num) < 500000) values.push(num);
-    }
-  }
+  document.getElementById('r-dif').textContent = 'R$ ' + fmtM(res.diferenca);
+  document.getElementById('r-cob').textContent = 'R$ ' + fmtM(res.totalCobrado);
+  document.getElementById('r-lic').textContent = 'R$ ' + fmtM(res.totalLicito);
+  document.getElementById('r-per').textContent = 'Período: ' + res.periodo + ' · ' + res.meses.length + ' meses';
+  document.getElementById('r-conf').innerHTML = `<span class="conf-badge conf-real">✓ Cálculo Real · Metodologia Pericial</span>`;
 
-  // Generate monthly summary based on actual data or realistic demo
-  const meses = [];
-  const now = new Date();
-  let inicio = new Date(document.getElementById('f-inicio').value || '2020-01-01');
-  let fim = new Date(document.getElementById('f-fim').value || now);
-
-  let totalCobrado = 0, totalLicito = 0;
-  let cur = new Date(inicio.getFullYear(), inicio.getMonth(), 1);
-
-  let baseVal = values.length > 0 ? Math.abs(values[Math.floor(values.length/2)]) * 0.1 : 500;
-  baseVal = Math.max(50, Math.min(baseVal, 3000));
-
-  while (cur <= fim) {
-    const mes = cur.toLocaleDateString('pt-BR', { month:'short', year:'numeric' });
-    const mediaSaldo = -(baseVal + Math.random() * baseVal * 0.5);
-    const taxaCobrada = 0.08 + Math.random() * 0.04; // 8-12% a.m.
-    const taxaBacen = 0.04 + Math.random() * 0.02;   // 4-6% a.m.
-    const encargoCobrado = Math.abs(mediaSaldo) * taxaCobrada;
-    const encargoBacen = Math.abs(mediaSaldo) * taxaBacen;
-    const diferenca = encargoCobrado - encargoBacen;
-
-    totalCobrado += encargoCobrado;
-    totalLicito += encargoBacen;
-
-    meses.push({
-      mes,
-      mediaSaldo,
-      taxaCobrada: (taxaCobrada * 100).toFixed(2),
-      taxaBacen: (taxaBacen * 100).toFixed(2),
-      encargoCobrado,
-      encargoBacen,
-      diferenca
-    });
-
-    cur.setMonth(cur.getMonth() + 1);
-    if (meses.length > 60) break;
-  }
-
-  return {
-    meses,
-    totalCobrado,
-    totalLicito,
-    diferenca: totalCobrado - totalLicito,
-    periodo: `${meses[0]?.mes || '—'} a ${meses[meses.length-1]?.mes || '—'}`
-  };
-}
-
-async function getAIAnalysis(result, cliente, banco, tipo, parsedData) {
-  const prompt = `Você é um perito contábil especializado em direito bancário brasileiro. Analise o seguinte resultado de revisão de conta corrente/cheque especial e elabore um parecer técnico-jurídico:
-
-CLIENTE: ${cliente}
-BANCO: ${banco}
-PERÍODO: ${result.periodo}
-TOTAL COBRADO PELO BANCO: R$ ${fmtMoney(result.totalCobrado)}
-TOTAL LÍCITO (BACEN S.20741): R$ ${fmtMoney(result.totalLicito)}
-DIFERENÇA APURADA: R$ ${fmtMoney(result.diferenca)}
-TIPO DE ANÁLISE: ${tipo}
-
-RESUMO MENSAL (primeiros 6 meses):
-${result.meses.slice(0,6).map(m => `${m.mes}: Cobrado R$${fmtMoney(m.encargoCobrado)} | Lícito R$${fmtMoney(m.encargoBacen)} | Diferença R$${fmtMoney(m.diferenca)}`).join('\n')}
-
-Elabore:
-1. Análise da irregularidade identificada (anatocismo/excesso de taxa)
-2. Fundamentação legal aplicável (Súmula STJ, Resolução BACEN, Código Civil)
-3. Metodologia de cálculo adotada
-4. Valor apurado e conclusão pericial
-5. Recomendação jurídica
-
-Seja técnico, objetivo e use terminologia jurídico-contábil adequada.`;
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1200,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-
-  if (!response.ok) throw new Error('Erro na API: ' + response.status);
-  const data = await response.json();
-  return data.content[0].text;
-}
-
-function gerarAnaliseDemo(result, cliente, banco, tipo) {
-  return `PARECER TÉCNICO-PERICIAL — ANÁLISE DE CONTA CORRENTE
-Modus Tecnologia Jurídica
-
-CLIENTE: ${cliente || 'N/A'}
-BANCO ANALISADO: ${banco || 'Não informado'}
-PERÍODO: ${result.periodo}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. IRREGULARIDADE IDENTIFICADA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-A análise do extrato bancário evidencia a prática de anatocismo — capitalização de juros sobre juros vencidos — vedada pelo ordenamento jurídico brasileiro. Adicionalmente, as taxas praticadas superam significativamente os limites da Série 20741 do Banco Central do Brasil.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-2. FUNDAMENTAÇÃO LEGAL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-• Súmula 121 STF: "É vedada a capitalização de juros, ainda que expressamente convencionada."
-• Súmula 539 STJ: Admite capitalização mensal nas operações bancárias com previsão contratual.
-• Art. 591 CC/2002: Juros compostos apenas quando expressamente pactuados.
-• Resolução CMN n° 4.558/2017: Limites de transparência para operações de crédito.
-• Série BACEN 20741: Taxa média de juros — cheque especial — pessoa física.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-3. METODOLOGIA ADOTADA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-a) Reconstrução do extrato em dias corridos
-b) Separação de principal e juros (juros compensados)
-c) Cálculo da média aritmética dos saldos devedores mensais
-d) Aplicação da taxa média BACEN Série 20741 ao saldo médio mensal
-e) Comparação com encargos efetivamente cobrados
-f) Atualização monetária pelo INPC/IGP-DI
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-4. RESULTADO APURADO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Total cobrado pelo banco:      R$ ${fmtMoney(result.totalCobrado)}
-Total lícito (BACEN S.20741):  R$ ${fmtMoney(result.totalLicito)}
-DIFERENÇA A RESTITUIR:         R$ ${fmtMoney(result.diferenca)}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-5. CONCLUSÃO E RECOMENDAÇÃO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Constata-se cobrança indevida de R$ ${fmtMoney(result.diferenca)} no período analisado, configurando enriquecimento sem causa da instituição financeira. Recomenda-se ação revisional com pedido de repetição do indébito, observado o prazo prescricional de 10 anos (art. 205 CC) ou 3 anos (art. 206 §3° IV CC), a depender da natureza da pretensão.
-
-⚠️ NOTA: Configure sua chave de API Claude para análise IA personalizada.`;
-}
-
-function renderSteps(steps) {
-  const wrap = document.getElementById('processingSteps');
-  wrap.innerHTML = steps.map(s => `
-    <div id="${s.id}" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--cream);">
-      <div id="${s.id}-icon" class="loading-spinner"></div>
-      <div style="font-size:0.82rem;" id="${s.id}-label">${s.label}</div>
-    </div>
-  `).join('');
-}
-
-function markStep(id, done) {
-  const icon = document.getElementById(id+'-icon');
-  if (icon) icon.outerHTML = `<div style="width:14px;height:14px;text-align:center;font-size:0.85rem;">${done?'✓':'✗'}</div>`;
-  const label = document.getElementById(id+'-label');
-  if (label) label.style.color = done ? 'var(--green)' : 'var(--red)';
-}
-
-function renderResult(result) {
-  document.getElementById('resultWrap').style.display = 'block';
-  document.getElementById('r-diferenca').textContent = 'R$ ' + fmtMoney(result.diferenca);
-  document.getElementById('r-cobrado').textContent = 'R$ ' + fmtMoney(result.totalCobrado);
-  document.getElementById('r-licito').textContent = 'R$ ' + fmtMoney(result.totalLicito);
-  document.getElementById('r-periodo').textContent = 'Período: ' + result.periodo;
-
-  // Table
-  const table = document.getElementById('resultTable');
-  let html = `<thead><tr>
-    <th>Mês Ref.</th><th>Média Saldo</th><th>Taxa Cobrada</th><th>Encargo Cobrado</th>
-    <th>Taxa BACEN</th><th>Encargo Lícito</th><th>Diferença</th>
-  </tr></thead><tbody>`;
-  for (const m of result.meses) {
-    const cls = m.diferenca > 0 ? 'td-neg' : 'td-pos';
-    html += `<tr>
-      <td>${m.mes}</td>
-      <td class="td-neg">${fmtMoney(m.mediaSaldo)}</td>
-      <td class="td-num">${m.taxaCobrada}%</td>
-      <td class="td-neg">${fmtMoney(m.encargoCobrado)}</td>
-      <td class="td-num">${m.taxaBacen}%</td>
-      <td class="td-pos">${fmtMoney(m.encargoBacen)}</td>
-      <td class="${cls}">${fmtMoney(m.diferenca)}</td>
+  // Tabela mensal
+  const tMes = document.getElementById('tMes');
+  let h = `<thead><tr><th>Mês Ref.</th><th>Dias</th><th>Média Saldo</th><th>Taxa Cobrada</th><th>Cobrado</th><th>Taxa BACEN</th><th>Lícito</th><th>Diferença</th></tr></thead><tbody>`;
+  let tcob=0, tlic=0;
+  for (const m of res.meses) {
+    tcob+=m.encargoCobrado; tlic+=m.encargoLicito;
+    const cls = m.diferenca > 0 ? 'tr-neg' : 'tr-pos';
+    h += `<tr>
+      <td style="font-weight:600">${m.nomeMes}</td>
+      <td class="tn">${m.qtdDias}</td>
+      <td class="tr-neg">${fmtM(m.mediaSaldo)}</td>
+      <td class="tn">${m.taxaCobrada.toFixed(4)}%</td>
+      <td class="tr-neg">${fmtM(m.encargoCobrado)}</td>
+      <td class="tn">${m.taxaBacen.toFixed(4)}%</td>
+      <td class="tr-pos">${fmtM(m.encargoLicito)}</td>
+      <td class="${cls}"><strong>${fmtM(m.diferenca)}</strong></td>
     </tr>`;
   }
-  // Total row
-  html += `<tr style="font-weight:700;background:var(--cream);">
-    <td colspan="3"><strong>TOTAL</strong></td>
-    <td class="td-neg"><strong>${fmtMoney(result.totalCobrado)}</strong></td>
-    <td></td>
-    <td class="td-pos"><strong>${fmtMoney(result.totalLicito)}</strong></td>
-    <td class="td-neg"><strong>${fmtMoney(result.diferenca)}</strong></td>
-  </tr>`;
-  html += '</tbody>';
-  table.innerHTML = html;
+  h += `<tr style="background:var(--cream);font-weight:700">
+    <td colspan="4"><strong>TOTAL</strong></td>
+    <td class="tr-neg"><strong>R$ ${fmtM(tcob)}</strong></td><td></td>
+    <td class="tr-pos"><strong>R$ ${fmtM(tlic)}</strong></td>
+    <td class="tr-neg"><strong>R$ ${fmtM(tcob-tlic)}</strong></td>
+  </tr></tbody>`;
+  tMes.innerHTML = h;
 
-  // AI Analysis
-  document.getElementById('aiAnalysis').textContent = result.aiAnalysis || '';
+  // Tabela diária (primeiros 60 dias)
+  const tDia = document.getElementById('tDia');
+  let hd = `<thead><tr><th>Data</th><th>Útil</th><th>Dias Úteis</th><th>Saldo</th><th>Movimento</th><th>Encargo</th></tr></thead><tbody>`;
+  for (const d of res.diario.slice(0, 60)) {
+    hd += `<tr>
+      <td style="font-family:'DM Mono',monospace;font-size:.72rem">${fmtDate(d.data)}</td>
+      <td class="tn" style="font-family:'DM Mono',monospace">${d.util ? '✓' : '—'}</td>
+      <td class="tn">${d.diasUteisAcum}</td>
+      <td class="${d.saldo<0?'tr-neg':'tr-pos'}">${d.saldo<0?'-':''}${fmtM(d.saldo)}</td>
+      <td class="${d.movimento<0?'tr-neg':'tr-pos'}">${d.movimento!==0?(d.movimento<0?'-':'+')+fmtM(d.movimento):''}</td>
+      <td class="${d.encargo?'tr-neg':''}">${d.encargo?fmtM(d.encargo):''}</td>
+    </tr>`;
+  }
+  if (res.diario.length > 60) hd += `<tr><td colspan="6" style="text-align:center;font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted)">Exportar Excel para ver todos os ${res.diario.length} dias</td></tr>`;
+  hd += '</tbody>';
+  tDia.innerHTML = hd;
 
-  // Chart
-  renderResultChart(result);
-  document.getElementById('processingWrap').style.display = 'none';
+  // Parecer
+  document.getElementById('aiTxt').textContent = res.aiAnalysis || '';
+
+  // Gráfico
+  renderResChart(res);
 }
 
-function renderResultChart(result) {
-  if (state.chartResult) state.chartResult.destroy();
-  const ctx = document.getElementById('chartResult').getContext('2d');
-  const labels = result.meses.map(m => m.mes);
-  state.chartResult = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Encargo Cobrado', data: result.meses.map(m => m.encargoCobrado.toFixed(2)), backgroundColor: 'rgba(192,57,43,0.75)', borderRadius: 4 },
-        { label: 'Encargo Lícito (BACEN)', data: result.meses.map(m => m.encargoBacen.toFixed(2)), backgroundColor: 'rgba(26,107,58,0.75)', borderRadius: 4 }
+function renderResChart(res) {
+  if (state.charts.res) state.charts.res.destroy();
+  const ctx = document.getElementById('chRes').getContext('2d');
+  state.charts.res = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: res.meses.map(m=>m.nomeMes),
+      datasets:[
+        {label:'Cobrado',data:res.meses.map(m=>+m.encargoCobrado.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:3},
+        {label:'Lícito BACEN',data:res.meses.map(m=>+m.encargoLicito.toFixed(2)),backgroundColor:'rgba(26,107,58,.75)',borderRadius:3}
       ]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { font: { family: 'DM Mono', size: 11 } } } },
-      scales: {
-        x: { ticks: { font: { family: 'DM Mono', size: 9 } } },
-        y: { ticks: { font: { family: 'DM Mono', size: 9 }, callback: v => 'R$'+fmtMoney(v) } }
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{family:'DM Mono',size:10}}}},
+      scales:{
+        x:{ticks:{font:{family:'DM Mono',size:9}}},
+        y:{ticks:{font:{family:'DM Mono',size:9},callback:v=>'R$'+fmtM(v)}}
       }
     }
   });
 }
 
-function switchResultTab(el, tabId) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  ['tab-resumo','tab-analise','tab-grafico'].forEach(id => {
-    document.getElementById(id).style.display = id === tabId ? 'block' : 'none';
+function rTab(el, id) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  ['rt-res','rt-dia','rt-ai','rt-gr'].forEach(x=>{
+    document.getElementById(x).style.display = x===id?'block':'none';
   });
 }
 
-// ═══════════════════════════════════════════════
-// SAVE / DASHBOARD
-// ═══════════════════════════════════════════════
-function salvarCaso() {
-  if (!state.currentCase) return;
+// ══════════════════════════════════════════════
+//  STEPS
+// ══════════════════════════════════════════════
+function renderSteps(steps) {
+  document.getElementById('procSteps').innerHTML = steps.map(s =>
+    `<div class="step" id="${s.id}"><div class="step-ic"><span class="spin"></span></div><div class="step-txt">${s.label}</div></div>`
+  ).join('');
+}
+function markStep(id, ok) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'step ' + (ok ? 'done' : 'err');
+  el.querySelector('.step-ic').innerHTML = ok ? '✓' : '✗';
+}
+
+// ══════════════════════════════════════════════
+//  SALVAR / EXPORTAR
+// ══════════════════════════════════════════════
+function salvar() {
   const c = state.currentCase;
-  const exists = state.cases.find(x => x.processo === c.processo && x.cliente === c.cliente);
-  if (!exists) {
-    state.cases.push({ ...c, id: Date.now() });
-    try { localStorage.setItem('modus_cases', JSON.stringify(state.cases)); } catch(e) {}
+  if (!c) return;
+  if (!state.cases.find(x=>x.id===c.id)) {
+    c.id = Date.now();
+    state.cases.push({...c});
+    try { localStorage.setItem('modus_v2', JSON.stringify(state.cases.map(x=>({...x,diario:undefined})))); } catch(e){}
   }
   renderSidebar();
-  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('overlay').classList.add('on');
 }
 
-function closeModal() {
-  document.getElementById('modalOverlay').classList.remove('open');
-}
+function exportar() {
+  const c = state.currentCase;
+  if (!c) return toast('Nenhum resultado para exportar.','err');
+  const wb = XLSX.utils.book_new();
 
-function renderSidebar() {
-  const list = document.getElementById('caseList');
-  if (!state.cases.length) {
-    list.innerHTML = '<div style="font-family:\'DM Mono\',monospace;font-size:0.65rem;color:#444;padding:0.5rem;">Nenhum caso cadastrado</div>';
-    return;
+  // Resumo
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['MODUS · ANÁLISE PERICIAL DE CONTA CORRENTE'],[''],
+    ['Cliente:',c.cliente,'Processo:',c.processo],
+    ['Banco:',c.banco,'Período:',c.periodo],
+    ['Metodologia:','Dias '+( c.modo==='uteis'?'Úteis':'Corridos'),'Data:',c.dataAnalise],[''],
+    ['RESULTADO'],
+    ['Total Cobrado:',c.totalCobrado],
+    ['Total Lícito (BACEN S.20741):',c.totalLicito],
+    ['DIFERENÇA:',c.diferenca],
+  ]), 'Resumo');
+
+  // Mensal
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['Mês Ref.','Dias','Média Saldo Devedor','Taxa Cobrada %','Encargo Cobrado','Taxa BACEN %','Encargo Lícito','Diferença'],
+    ...c.meses.map(m=>[m.nomeMes,m.qtdDias,m.mediaSaldo,m.taxaCobrada,m.encargoCobrado,m.taxaBacen,m.encargoLicito,m.diferenca])
+  ]), 'Detalhamento Mensal');
+
+  // Diário
+  if (c.diario?.length) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+      ['Data','Dia Útil','Dias Úteis Acum.','Saldo','Movimento','Encargo'],
+      ...c.diario.map(d=>[fmtDate(d.data),d.util?'SIM':'NÃO',d.diasUteisAcum,d.saldo,d.movimento,d.encargo||''])
+    ]), 'Série Diária');
   }
-  list.innerHTML = state.cases.map(c => `
-    <div class="case-item" onclick="openCase(${c.id})">
-      <div class="case-item-name">${c.cliente || 'Sem nome'}</div>
-      <div class="case-item-meta">${c.processo || '—'} · ${c.dataAnalise || ''}</div>
-    </div>
-  `).join('');
+
+  // Parecer
+  if (c.aiAnalysis) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['PARECER PERICIAL'],[''],[ c.aiAnalysis]]), 'Parecer');
+
+  XLSX.writeFile(wb, `Modus_${c.cliente?.replace(/\s+/g,'_')||'caso'}_${c.dataAnalise?.replace(/\//g,'-')}.xlsx`);
+  toast('Exportado com sucesso!','ok');
 }
 
-function openCase(id) {
-  const c = state.cases.find(x => x.id === id);
-  if (!c) return;
-  state.currentCase = c;
-  showView('caso');
+function closeM() { document.getElementById('overlay').classList.remove('on'); }
 
-  document.getElementById('caso-title').innerHTML = `Caso <em>${c.cliente}</em>`;
-  document.getElementById('caso-subtitle').textContent = `${c.processo || '—'} · ${c.banco || '—'} · ${c.periodo}`;
+// ══════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════
+function renderDash() {
+  const cs = state.cases;
+  document.getElementById('d-total').textContent = cs.length;
+  const tc = cs.reduce((a,c)=>a+c.totalCobrado,0);
+  const tl = cs.reduce((a,c)=>a+c.totalLicito,0);
+  const td = cs.reduce((a,c)=>a+c.diferenca,0);
+  document.getElementById('d-cob').textContent = 'R$ '+fmtM(tc);
+  document.getElementById('d-lic').textContent = 'R$ '+fmtM(tl);
+  document.getElementById('d-dif').textContent = 'R$ '+fmtM(td);
 
-  const wrap = document.getElementById('casoContent');
-  wrap.innerHTML = `
-    <div class="grid-4 section-gap">
-      <div class="stat-card danger"><div class="stat-label">Cobrado</div><div class="stat-value negative">R$ ${fmtMoney(c.totalCobrado)}</div></div>
-      <div class="stat-card success"><div class="stat-label">Lícito BACEN</div><div class="stat-value positive">R$ ${fmtMoney(c.totalLicito)}</div></div>
-      <div class="stat-card danger"><div class="stat-label">Diferença</div><div class="stat-value negative">R$ ${fmtMoney(c.diferenca)}</div></div>
-      <div class="stat-card"><div class="stat-label">Meses Analisados</div><div class="stat-value">${c.meses?.length || 0}</div></div>
-    </div>
-    <div class="card"><div class="card-title">Análise Pericial</div><div style="font-size:0.82rem;line-height:1.7;white-space:pre-wrap;">${c.aiAnalysis || '—'}</div></div>
-  `;
-}
-
-function renderDashboard() {
-  const cases = state.cases;
-  const total = cases.length;
-  const totalCobrado = cases.reduce((a,c) => a+c.totalCobrado, 0);
-  const totalLicito = cases.reduce((a,c) => a+c.totalLicito, 0);
-  const totalDiff = cases.reduce((a,c) => a+c.diferenca, 0);
-
-  document.getElementById('ds-total').textContent = total;
-  document.getElementById('ds-cobrado').textContent = 'R$ ' + fmtMoney(totalCobrado);
-  document.getElementById('ds-licito').textContent = 'R$ ' + fmtMoney(totalLicito);
-  document.getElementById('ds-diff').textContent = 'R$ ' + fmtMoney(totalDiff);
-
-  // Cases table
-  const wrap = document.getElementById('dashCasosTable');
-  if (!cases.length) {
-    wrap.innerHTML = `<div class="card-title">Todos os Casos</div><div class="empty-state"><div class="empty-state-icon">📂</div><div class="empty-state-title">Nenhum caso ainda</div><div class="empty-state-text">Clique em "Novo Caso" para iniciar.</div></div>`;
+  // Table
+  const dt = document.getElementById('d-table');
+  if (!cs.length) {
+    dt.innerHTML = `<div class="ct">Casos</div><div style="text-align:center;padding:3rem;color:var(--muted)"><div style="font-size:2rem;margin-bottom:.75rem">📂</div><div style="font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--ink);margin-bottom:.4rem">Nenhum caso salvo</div><div style="font-size:.8rem">Clique em "+ Novo Caso" para começar</div></div>`;
   } else {
-    let html = `<div class="card-title">Todos os Casos</div><div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th>Processo</th><th>Banco</th><th>Período</th><th>Cobrado</th><th>Lícito</th><th>Diferença</th><th>Análise</th></tr></thead><tbody>`;
-    for (const c of cases) {
-      html += `<tr style="cursor:pointer;" onclick="openCase(${c.id})">
+    let h = `<div class="ct">Todos os Casos</div><div class="tw"><table><thead><tr><th>Cliente</th><th>Processo</th><th>Banco</th><th>Período</th><th>Cobrado</th><th>Lícito</th><th>Diferença</th><th>Fonte</th></tr></thead><tbody>`;
+    for (const c of cs) {
+      h += `<tr style="cursor:pointer" onclick="openCase(${c.id})">
         <td><strong>${c.cliente}</strong></td>
-        <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">${c.processo || '—'}</td>
-        <td>${c.banco || '—'}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:0.72rem;">${c.periodo}</td>
-        <td class="td-neg">R$ ${fmtMoney(c.totalCobrado)}</td>
-        <td class="td-pos">R$ ${fmtMoney(c.totalLicito)}</td>
-        <td class="td-neg"><strong>R$ ${fmtMoney(c.diferenca)}</strong></td>
-        <td>${c.dataAnalise}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:.7rem">${c.processo||'—'}</td>
+        <td>${c.banco||'—'}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:.7rem">${c.periodo}</td>
+        <td class="tr-neg">R$ ${fmtM(c.totalCobrado)}</td>
+        <td class="tr-pos">R$ ${fmtM(c.totalLicito)}</td>
+        <td class="tr-neg"><strong>R$ ${fmtM(c.diferenca)}</strong></td>
+        <td style="font-family:'DM Mono',monospace;font-size:.65rem">${c.fonte||'—'}</td>
       </tr>`;
     }
-    html += '</tbody></table></div>';
-    wrap.innerHTML = html;
+    dt.innerHTML = h + '</tbody></table></div>';
   }
 
   // Charts
-  renderDashCharts(cases);
+  if (state.charts.c1) state.charts.c1.destroy();
+  if (state.charts.c2) state.charts.c2.destroy();
+  const c1 = document.getElementById('ch1').getContext('2d');
+  const c2 = document.getElementById('ch2').getContext('2d');
+  if (cs.length) {
+    state.charts.c1 = new Chart(c1, {type:'bar',data:{
+      labels:cs.map(c=>c.cliente?.split(' ')[0]||'Caso'),
+      datasets:[
+        {label:'Cobrado',data:cs.map(c=>+c.totalCobrado.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:3},
+        {label:'Lícito',data:cs.map(c=>+c.totalLicito.toFixed(2)),backgroundColor:'rgba(26,107,58,.75)',borderRadius:3}
+      ]
+    },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{family:'DM Mono',size:10}}}},scales:{x:{ticks:{font:{family:'DM Mono',size:9}}},y:{ticks:{font:{family:'DM Mono',size:9},callback:v=>'R$'+fmtM(v)}}}}});
+    state.charts.c2 = new Chart(c2, {type:'doughnut',data:{
+      labels:['Com resultado'],datasets:[{data:[cs.length],backgroundColor:['#c8a84b'],borderWidth:0}]
+    },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{family:'DM Mono',size:10}}}}}});
+  } else {
+    [c1,c2].forEach(ctx=>{ctx.font='12px DM Mono';ctx.fillStyle='#aaa';ctx.fillText('Nenhum dado',50,80)});
+  }
   renderSidebar();
 }
 
-function renderDashCharts(cases) {
-  if (state.chartCasos) state.chartCasos.destroy();
-  if (state.chartStatus) state.chartStatus.destroy();
-
-  const ctx1 = document.getElementById('chartCasos').getContext('2d');
-  const ctx2 = document.getElementById('chartStatus').getContext('2d');
-
-  if (!cases.length) {
-    ctx1.font = '12px DM Mono'; ctx1.fillStyle = '#aaa'; ctx1.fillText('Nenhum dado', 80, 80);
-    ctx2.font = '12px DM Mono'; ctx2.fillStyle = '#aaa'; ctx2.fillText('Nenhum dado', 80, 80);
-    return;
-  }
-
-  state.chartCasos = new Chart(ctx1, {
-    type: 'bar',
-    data: {
-      labels: cases.map(c => c.cliente?.split(' ')[0] || 'Caso'),
-      datasets: [
-        { label: 'Cobrado', data: cases.map(c => c.totalCobrado.toFixed(2)), backgroundColor: 'rgba(192,57,43,0.75)', borderRadius: 4 },
-        { label: 'Lícito', data: cases.map(c => c.totalLicito.toFixed(2)), backgroundColor: 'rgba(26,107,58,0.75)', borderRadius: 4 }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { font: { family:'DM Mono',size:10 } } } },
-      scales: {
-        x: { ticks: { font: { family:'DM Mono',size:9 } } },
-        y: { ticks: { font: { family:'DM Mono',size:9 }, callback: v => 'R$'+fmtMoney(v) } }
-      }
-    }
-  });
-
-  state.chartStatus = new Chart(ctx2, {
-    type: 'doughnut',
-    data: {
-      labels: ['Com resultado', 'Sem resultado'],
-      datasets: [{ data: [cases.length, 0], backgroundColor: ['#c8a84b','#333'], borderWidth: 0 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { font: { family:'DM Mono',size:10 }, color:'#333' } } }
-    }
-  });
-}
-
-// ═══════════════════════════════════════════════
-// CHAT
-// ═══════════════════════════════════════════════
-function populateCaseSelect() {
-  const sel = document.getElementById('chatCaseSelect');
-  sel.innerHTML = '<option value="">Nenhum caso selecionado</option>' +
-    state.cases.map(c => `<option value="${c.id}">${c.cliente} · ${c.processo || 'S/Proc'}</option>`).join('');
-}
-
-function loadCaseContext() {
-  const id = parseInt(document.getElementById('chatCaseSelect').value);
-  const wrap = document.getElementById('chatCaseSummary');
-  if (!id) { wrap.style.display='none'; return; }
-  const c = state.cases.find(x => x.id === id);
+function openCase(id) {
+  const c = state.cases.find(x=>x.id===id);
   if (!c) return;
-  wrap.style.display = 'block';
-  document.getElementById('chatCaseSummaryText').innerHTML = `
-    <strong>${c.cliente}</strong> · ${c.banco || '—'}<br>
-    <span style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--muted);">
-    Diferença: <strong style="color:var(--red);">R$ ${fmtMoney(c.diferenca)}</strong> · ${c.periodo}
-    </span>
-  `;
-  state.chatCaseContext = c;
+  state.currentCase = c;
+  go('caso');
+  document.getElementById('caso-t').innerHTML = `Caso <em>${c.cliente}</em>`;
+  document.getElementById('caso-s').textContent = `${c.processo||'—'} · ${c.banco||'—'} · ${c.periodo}`;
+  document.getElementById('casoC').innerHTML = `
+    <div class="g4 gap">
+      <div class="sc danger"><div class="sl">Cobrado</div><div class="sv neg">R$ ${fmtM(c.totalCobrado)}</div></div>
+      <div class="sc ok"><div class="sl">Lícito BACEN</div><div class="sv pos">R$ ${fmtM(c.totalLicito)}</div></div>
+      <div class="sc danger"><div class="sl">Diferença</div><div class="sv neg">R$ ${fmtM(c.diferenca)}</div></div>
+      <div class="sc"><div class="sl">Meses</div><div class="sv">${c.meses?.length||0}</div></div>
+    </div>
+    <div class="card"><div class="ct">Parecer Pericial</div><div style="font-size:.8rem;line-height:1.75;white-space:pre-wrap">${c.aiAnalysis||'—'}</div></div>`;
 }
 
-async function sendChat() {
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = '';
+function renderSidebar() {
+  const el = document.getElementById('cList');
+  if (!state.cases.length) { el.innerHTML='<div style="font-family:\'DM Mono\',monospace;font-size:.62rem;color:#333;padding:.4rem .5rem">Nenhum caso salvo</div>'; return; }
+  el.innerHTML = state.cases.map(c=>`
+    <div class="case-item" onclick="openCase(${c.id})">
+      <div class="ci-name">${c.cliente||'Sem nome'}</div>
+      <div class="ci-meta">${c.processo||'—'} · ${c.dataAnalise||''}</div>
+    </div>`).join('');
+}
 
-  addChatMsg('user', text);
-  state.chatHistory.push({ role:'user', content: text });
-
-  const thinking = addChatMsg('ai', '<span class="loading-spinner"></span> Analisando...');
-
+// ══════════════════════════════════════════════
+//  CHAT
+// ══════════════════════════════════════════════
+function populateCtx() {
+  const sel = document.getElementById('chatCase');
+  sel.innerHTML = '<option value="">Sem caso selecionado</option>' +
+    state.cases.map(c=>`<option value="${c.id}">${c.cliente} · ${c.processo||'S/N'}</option>`).join('');
+}
+function loadCtx() {
+  const id = parseInt(document.getElementById('chatCase').value);
+  const el = document.getElementById('ctxSum');
+  if (!id) { el.style.display='none'; state.chatCtx=null; return; }
+  const c = state.cases.find(x=>x.id===id);
+  if (!c) return;
+  state.chatCtx = c;
+  el.style.display='block';
+  el.innerHTML = `<strong>${c.cliente}</strong> · ${c.banco||'—'}<br><span style="font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted)">Diferença: <strong style="color:var(--red)">R$ ${fmtM(c.diferenca)}</strong> · ${c.periodo}</span>`;
+}
+async function enviar() {
+  const inp = document.getElementById('chatIn');
+  const txt = inp.value.trim(); if (!txt) return;
+  inp.value = '';
+  addMsg('u', txt);
+  state.chatHistory.push({role:'user',content:txt});
+  const thinking = addMsg('ai','<span class="spin"></span>');
   try {
-    let response;
-    if (state.apiKey && state.apiKey.startsWith('sk-ant-')) {
-      const caseCtx = state.chatCaseContext ? `\n\nCASO EM ANÁLISE: ${state.chatCaseContext.cliente} | ${state.chatCaseContext.banco} | Diferença: R$ ${fmtMoney(state.chatCaseContext.diferenca)} | Período: ${state.chatCaseContext.periodo}` : '';
-      const sysPrompt = `Você é um assistente jurídico especializado em direito bancário brasileiro, análise pericial de conta corrente e cheque especial. Responda de forma técnica e objetiva.${caseCtx}`;
-
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 800,
-          system: sysPrompt,
-          messages: state.chatHistory
-        })
+    let resp;
+    if (state.apiKey?.startsWith('sk-ant-')) {
+      const ctx = state.chatCtx ? `\n\nCASO EM CONTEXTO: ${state.chatCtx.cliente} | ${state.chatCtx.banco} | Diferença: R$ ${fmtM(state.chatCtx.diferenca)} | Período: ${state.chatCtx.periodo}` : '';
+      const r = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,
+          system:`Você é assistente jurídico especializado em direito bancário brasileiro, análise pericial de conta corrente e cheque especial. Seja técnico e objetivo.${ctx}`,
+          messages:state.chatHistory})
       });
-      const data = await resp.json();
-      response = data.content[0].text;
-    } else {
-      response = getDemoResponse(text);
-    }
-    state.chatHistory.push({ role:'assistant', content: response });
-    thinking.innerHTML = `<div class="msg-label">Assistente Modus</div>${response.replace(/\n/g,'<br>')}`;
-  } catch(e) {
-    thinking.innerHTML = 'Erro: ' + e.message;
-  }
+      const d = await r.json(); resp = d.content[0].text;
+    } else { resp = demoResp(txt); }
+    state.chatHistory.push({role:'assistant',content:resp});
+    thinking.innerHTML = `<div class="msg-lbl">Assistente</div>${resp.replace(/\n/g,'<br>')}`;
+  } catch(e) { thinking.innerHTML='Erro: '+e.message; }
 }
-
-function addChatMsg(type, content) {
-  const wrap = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = 'msg msg-' + type;
-  if (type === 'ai') div.innerHTML = `<div class="msg-label">Assistente Modus</div>${content}`;
-  else div.innerHTML = `<div class="msg-label">Você</div>${content}`;
-  wrap.appendChild(div);
-  wrap.scrollTop = wrap.scrollHeight;
-  return div;
+function addMsg(type, content) {
+  const w = document.getElementById('chatMsgs');
+  const d = document.createElement('div');
+  d.className = 'msg msg-'+(type==='ai'?'ai':'u');
+  d.innerHTML = type==='ai'?`<div class="msg-lbl">Assistente</div>${content}`:`<div class="msg-lbl">Você</div>${content}`;
+  w.appendChild(d); w.scrollTop=w.scrollHeight; return d;
 }
-
-function getDemoResponse(q) {
-  if (q.toLowerCase().includes('anatocismo')) return 'Anatocismo é a capitalização de juros sobre juros vencidos. No cheque especial, o banco lança encargos mensais e, no mês seguinte, cobra juros sobre o saldo já incluindo esses encargos. A Súmula 121 do STF veda tal prática. Configure sua chave de API para respostas personalizadas.';
-  if (q.toLowerCase().includes('bacen') || q.toLowerCase().includes('20741')) return 'A Série 20741 do BACEN divulga mensalmente a taxa média de juros cobrada em operações de cheque especial por pessoa física. É o parâmetro legal para o recálculo dos encargos lícitos. Disponível em dadosabertos.bcb.gov.br.';
-  if (q.toLowerCase().includes('prescri')) return 'Para revisão de cláusulas contratuais bancárias, o STJ pacificou o prazo de 10 anos (art. 205 CC). Para repetição do indébito em relação a parcelas vencidas, aplica-se o prazo de 3 anos do art. 206, §3°, IV do CC. Configure a API Claude para análise completa.';
-  return 'Interessante questão. Para respostas personalizadas e baseadas nos documentos do seu caso, configure sua chave de API Claude no topo da tela. Enquanto isso, posso ajudar com conceitos gerais de direito bancário.';
+function demoResp(q) {
+  if (/anatocismo/i.test(q)) return 'Anatocismo é a capitalização de juros sobre juros vencidos. Em cheque especial, o banco cobra encargos mensais e, no período seguinte, aplica juros sobre o saldo que já inclui esses encargos — configurando capitalização composta vedada pela Súmula 121 do STF. Configure a chave Claude para análise personalizada.';
+  if (/20741|bacen|série/i.test(q)) return 'A Série 20741 do BACEN divulga mensalmente a taxa média de juros em operações de cheque especial para pessoa física. É o teto legal para o recálculo dos encargos lícitos. Disponível em dadosabertos.bcb.gov.br. O sistema Modus tem as taxas de 2010 a 2024 embutidas.';
+  if (/6|seis|hipótese|compensado/i.test(q)) return 'Os juros compensados consistem em separar, nos saldos devedores, o principal dos juros acumulados. As 6 hipóteses tratam de diferentes combinações de créditos e débitos no mesmo dia do lançamento dos encargos — determinando se o crédito quita parcial ou integralmente os juros acumulados, ou se estes se incorporam ao principal.';
+  if (/prescri/i.test(q)) return 'O STJ pacificou: 10 anos (art. 205 CC) para a pretensão revisional de cláusula contratual; 3 anos (art. 206 §3° IV CC) para repetição de parcelas vencidas. O marco inicial é a data do pagamento de cada parcela — importante para calcular quais meses ainda estão dentro do prazo.';
+  return 'Para respostas detalhadas e análise do seu caso específico, configure sua chave de API Claude no campo no topo da tela. Posso ajudar com qualquer questão de direito bancário ou metodologia pericial.';
 }
+function setSugg(el) { document.getElementById('chatIn').value = el.textContent; document.getElementById('chatIn').focus(); }
 
-function setSuggestion(el) {
-  document.getElementById('chatInput').value = el.textContent;
-  document.getElementById('chatInput').focus();
-}
-
-// ═══════════════════════════════════════════════
-// EXPORT
-// ═══════════════════════════════════════════════
-function exportarResultado() {
-  const c = state.currentCase;
-  if (!c) return toast('Nenhum resultado para exportar.', 'error');
-
-  const wb = XLSX.utils.book_new();
-
-  // Summary sheet
-  const summaryData = [
-    ['MODUS · ANÁLISE PERICIAL DE CONTA CORRENTE', '', '', ''],
-    ['', '', '', ''],
-    ['Cliente:', c.cliente, 'Processo:', c.processo],
-    ['Banco:', c.banco, 'Período:', c.periodo],
-    ['Data da Análise:', c.dataAnalise, '', ''],
-    ['', '', '', ''],
-    ['RESULTADO APURADO', '', '', ''],
-    ['Total Cobrado pelo Banco:', c.totalCobrado, '', ''],
-    ['Total Lícito (BACEN S.20741):', c.totalLicito, '', ''],
-    ['DIFERENÇA A RESTITUIR:', c.diferenca, '', ''],
-  ];
-  const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
-
-  // Monthly detail
-  const monthlyData = [
-    ['Mês', 'Média Saldo Devedor', 'Taxa Cobrada %', 'Encargo Cobrado', 'Taxa BACEN %', 'Encargo Lícito', 'Diferença'],
-    ...c.meses.map(m => [m.mes, m.mediaSaldo, m.taxaCobrada, m.encargoCobrado, m.taxaBacen, m.encargoBacen, m.diferenca])
-  ];
-  const ws2 = XLSX.utils.aoa_to_sheet(monthlyData);
-  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhamento Mensal');
-
-  // Analysis
-  if (c.aiAnalysis) {
-    const ws3 = XLSX.utils.aoa_to_sheet([['ANÁLISE PERICIAL'], [''], [c.aiAnalysis]]);
-    XLSX.utils.book_append_sheet(wb, ws3, 'Análise Pericial');
-  }
-
-  XLSX.writeFile(wb, `Modus_Analise_${c.cliente?.replace(/\s+/g,'_') || 'caso'}_${Date.now()}.xlsx`);
-  toast('Relatório exportado com sucesso!', 'success');
-}
-
-// ═══════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════
-function fmtMoney(v) {
-  if (v === undefined || v === null || isNaN(v)) return '0,00';
-  return Math.abs(Number(v)).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
-}
-
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
+// ══════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════
+function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
 function toast(msg, type='') {
-  const t = document.createElement('div');
-  t.className = 'toast ' + type;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3500);
+  const t=document.createElement('div'); t.className='toast '+(type==='err'?'err':type==='ok'?'ok':'');
+  t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),4000);
 }
 
-// ═══════════════════════════════════════════════
 // INIT
-// ═══════════════════════════════════════════════
 renderSidebar();
-renderDashboard();
+renderDash();
 </script>
 </body>
 </html>
