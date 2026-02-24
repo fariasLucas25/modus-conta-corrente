@@ -1103,54 +1103,78 @@ upZone.addEventListener('drop', e=>{e.preventDefault();upZone.classList.remove('
 
 async function handleFile(file) {
   if (!file) return;
-  document.getElementById('fStatus').style.display='block';
+
+  const fConf = document.getElementById('fConf');
+  const log = (msg, color) => {
+    fConf.textContent = msg;
+    fConf.style.color = color || '';
+    console.log('[Modus]', msg);
+  };
+
+  document.getElementById('fStatus').style.display = 'block';
   document.getElementById('fName').textContent = file.name;
   document.getElementById('fInfo').textContent = `${(file.size/1024).toFixed(1)} KB`;
-  document.getElementById('fConf').textContent = '⏳ Processando...';
+  log('⏳ Lendo arquivo...');
 
   try {
     const ext = file.name.split('.').pop().toLowerCase();
     let parsed;
-    if (ext === 'pdf') {
-      document.getElementById('fConf').textContent = '⏳ Lendo PDF...';
-      parsed = await parsePDF(file);
 
-      // Fonte codificada (ex: Bradesco) ou PDF escaneado — precisa da Claude API
+    if (ext === 'pdf') {
+      log('⏳ Renderizando páginas do PDF...');
+      parsed = await parsePDF(file);
+      log(`PDF lido · fonte=${parsed.fonte} · saldos=${parsed.saldos.length} · imagens=${(parsed.pageImages||[]).length}`);
+
       if (parsed.saldos.length < 3 || parsed.fonte === 'pdf_encoded') {
-        if (state.apiKey && state.apiKey.startsWith('sk-ant-')) {
-          document.getElementById('fConf').textContent = '🤖 PDF com fonte codificada · Extraindo via Claude...';
+        // Lê a chave diretamente do campo (garante que é o valor atual)
+        const keyFromInput = document.getElementById('apiKey').value.trim();
+        const keyToUse = keyFromInput || state.apiKey;
+
+        log(`⚠️ PDF precisa de IA · chave disponível: ${keyToUse ? 'SIM' : 'NÃO'}`);
+
+        if (keyToUse && keyToUse.startsWith('sk-ant-')) {
+          state.apiKey = keyToUse; // garantir sincronização
+          log('🤖 Enviando para Claude ler o PDF...');
           try {
             parsed = await extrairViaAI(parsed.rawText || '', parsed.pageImages || []);
-            parsed.fonte = 'ai';
+            log(`✓ Claude extraiu · saldos=${parsed.saldos.length} · encargos=${parsed.encargos.length}`, '#1a6b3a');
           } catch(aiErr) {
-            toast('Erro na extração: ' + aiErr.message, 'err');
-            document.getElementById('fConf').textContent = '✗ Erro na extração';
+            log('✗ Erro Claude: ' + aiErr.message, '#c0392b');
+            toast('Erro Claude: ' + aiErr.message, 'err');
+            return;
           }
         } else {
-          toast('Este PDF usa fonte codificada (comum em Bradesco, Itaú). Configure a chave Claude no topo para extração automática.', 'err');
-          document.getElementById('fConf').textContent = '⚠️ Requer chave Claude';
+          log('⚠️ Chave Claude não detectada', '#c8a84b');
+          toast('PDF do Bradesco usa fonte codificada. Configure a chave Claude no topo da tela (campo "API Claude") para extração automática.', 'err');
+          return;
         }
       }
+
     } else {
+      log('⏳ Lendo planilha...');
       parsed = await parseExcel(file);
+      log(`✓ Planilha lida · saldos=${parsed.saldos.length} · encargos=${parsed.encargos.length}`, '#1a6b3a');
     }
 
     state.parsedData = parsed;
-    const conf = parsed.fonte === 'ai' ? '🤖 Extraído via Claude AI' :
-                 parsed.fonte === 'pdf' ? '✓ PDF nativo processado' : '✓ Excel processado';
-    document.getElementById('fConf').textContent = conf;
+
+    const confMsg = parsed.fonte === 'ai' ? '🤖 Extraído via Claude AI' :
+                    parsed.fonte === 'pdf' ? '✓ PDF nativo processado' :
+                    parsed.fonte === 'pdf_encoded' ? '✓ PDF processado (fonte codificada)' :
+                    '✓ Planilha processada';
+    log(confMsg, '#1a6b3a');
 
     showPreview(parsed);
-    document.getElementById('btnAn').disabled = !parsed.saldos.length;
-
-    if (!parsed.saldos.length) toast('Nenhum saldo identificado. Verifique se o PDF é nativo (não escaneado) ou configure a chave Claude.', 'err');
-    else toast(`${parsed.saldos.length} saldos e ${parsed.encargos.length} encargos identificados`, 'ok');
+    document.getElementById('btnAn').disabled = false;
+    toast(`${parsed.saldos.length} saldos e ${parsed.encargos.length} encargos identificados`, 'ok');
 
   } catch(e) {
+    log('✗ Erro: ' + e.message, '#c0392b');
     toast('Erro: ' + e.message, 'err');
-    document.getElementById('fConf').textContent = '✗ Erro na extração';
+    console.error(e);
   }
 }
+
 
 function showPreview(parsed) {
   const wrap = document.getElementById('prevWrap');
