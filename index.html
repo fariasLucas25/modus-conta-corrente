@@ -201,9 +201,8 @@ tr:hover td{background:var(--cream)}
   <div class="hdr-right">
     <span class="version-badge">v2 · Cálculos Reais</span>
     <div class="api-wrap">
-      <label>API Claude</label>
-      <input type="password" id="apiKey" placeholder="sk-ant-..." oninput="onKey(this.value)">
-      <div class="api-dot" id="dot"></div>
+      <div class="api-dot on" id="dot"></div>
+      <label style="color:#888">API Claude · Proxy Ativo</label>
     </div>
   </div>
 </header>
@@ -870,9 +869,7 @@ async function parseExcel(file) {
 // ══════════════════════════════════════════════
 
 async function extrairViaAI(rawText, pageImages) {
-  if (!state.apiKey || !state.apiKey.startsWith('sk-ant-')) {
-    throw new Error('Configure a chave Claude para processar este tipo de PDF.');
-  }
+  // Chave gerenciada pelo proxy Netlify
 
   let messages;
 
@@ -917,14 +914,9 @@ Responda APENAS em JSON válido:
     }];
   }
 
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  const resp = await fetch('/.netlify/functions/claude', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': state.apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-ipc': 'true'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4000,
@@ -962,7 +954,7 @@ Responda APENAS em JSON válido:
 // ══════════════════════════════════════════════
 
 async function gerarParecer(res, cliente, banco) {
-  if (!state.apiKey) return gerarParecerDemo(res, cliente, banco);
+  // Sempre usa API via proxy
 
   const prompt = `Você é perito contábil e jurídico especializado em direito bancário brasileiro. Elabore um parecer técnico-pericial com base nos dados calculados pelo sistema Modus.
 
@@ -991,7 +983,7 @@ Elabore:
 
 Seja técnico, objetivo e use terminologia jurídico-contábil adequada. Máximo 600 palavras.`;
 
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  const resp = await fetch('/.netlify/functions/claude', {
     method:'POST',
     headers:{
       'Content-Type':'application/json',
@@ -1126,26 +1118,13 @@ async function handleFile(file) {
       log(`PDF lido · fonte=${parsed.fonte} · saldos=${parsed.saldos.length} · imagens=${(parsed.pageImages||[]).length}`);
 
       if (parsed.saldos.length < 3 || parsed.fonte === 'pdf_encoded') {
-        // Lê a chave diretamente do campo (garante que é o valor atual)
-        const keyFromInput = document.getElementById('apiKey').value.trim();
-        const keyToUse = keyFromInput || state.apiKey;
-
-        log(`⚠️ PDF precisa de IA · chave disponível: ${keyToUse ? 'SIM' : 'NÃO'}`);
-
-        if (keyToUse && keyToUse.startsWith('sk-ant-')) {
-          state.apiKey = keyToUse; // garantir sincronização
-          log('🤖 Enviando para Claude ler o PDF...');
-          try {
-            parsed = await extrairViaAI(parsed.rawText || '', parsed.pageImages || []);
-            log(`✓ Claude extraiu · saldos=${parsed.saldos.length} · encargos=${parsed.encargos.length}`, '#1a6b3a');
-          } catch(aiErr) {
-            log('✗ Erro Claude: ' + aiErr.message, '#c0392b');
-            toast('Erro Claude: ' + aiErr.message, 'err');
-            return;
-          }
-        } else {
-          log('⚠️ Chave Claude não detectada', '#c8a84b');
-          toast('PDF do Bradesco usa fonte codificada. Configure a chave Claude no topo da tela (campo "API Claude") para extração automática.', 'err');
+        log('🤖 PDF com fonte codificada · Enviando para Claude...');
+        try {
+          parsed = await extrairViaAI(parsed.rawText || '', parsed.pageImages || []);
+          log(`✓ Claude extraiu · saldos=${parsed.saldos.length} · encargos=${parsed.encargos.length}`, '#1a6b3a');
+        } catch(aiErr) {
+          log('✗ Erro: ' + aiErr.message, '#c0392b');
+          toast('Erro na extração: ' + aiErr.message, 'err');
           return;
         }
       }
@@ -1530,16 +1509,11 @@ async function enviar() {
   const thinking = addMsg('ai','<span class="spin"></span>');
   try {
     let resp;
-    if (state.apiKey?.startsWith('sk-ant-')) {
+    if (true) { // proxy handles auth
       const ctx = state.chatCtx ? `\n\nCASO EM CONTEXTO: ${state.chatCtx.cliente} | ${state.chatCtx.banco} | Diferença: R$ ${fmtM(state.chatCtx.diferenca)} | Período: ${state.chatCtx.periodo}` : '';
-      const r = await fetch('https://api.anthropic.com/v1/messages',{
+      const r = await fetch('/.netlify/functions/claude',{
         method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'x-api-key':state.apiKey,
-          'anthropic-version':'2023-06-01',
-          'anthropic-dangerous-direct-browser-ipc':'true'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,
           system:`Você é assistente jurídico especializado em direito bancário brasileiro, análise pericial de conta corrente e cheque especial. Seja técnico e objetivo.${ctx}`,
           messages:state.chatHistory})
